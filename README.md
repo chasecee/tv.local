@@ -70,11 +70,22 @@ Steps:
     cd tv.local
     ```
 
-4.  **Install Python Dependencies:**
+4.  **Create Virtual Environment & Install Dependencies:**
+
+    - It's highly recommended to use a Python virtual environment.
 
     ```bash
-    sudo pip3 install -r requirements.txt
+    # Create a virtual environment named .venv
+    python3 -m venv .venv
+    # Activate the virtual environment
+    source .venv/bin/activate
+    # Now install dependencies into the venv
+    pip install -r requirements.txt
+    # You can deactivate later with the command: deactivate
     ```
+
+    - **IMPORTANT:** Whenever you open a new terminal to work on this project,
+      remember to reactivate the environment: `source .venv/bin/activate`
 
 5.  **Configure LCD Pins (if needed):**
 
@@ -84,7 +95,10 @@ Steps:
 6.  **Configure and Enable Systemd Service:**
 
     - Edit the service file: `nano tvplayer.service`
-    - **IMPORTANT:** Inside the file, update the `User`, `Group`, `WorkingDirectory`, and `ExecStart` paths to match your username (e.g., `pi`) and the absolute path where you cloned the project (e.g., `/home/pi/tv.local`).
+    - **IMPORTANT:** Inside the file, update the `User`, `Group`, and `WorkingDirectory` paths.
+    - **CRITICAL:** Update the `ExecStart` path to use the Python executable **from the virtual environment**. It should look like:
+      `ExecStart=/home/pi/tv.local/.venv/bin/python3 /home/pi/tv.local/app.py`
+      (Adjust `/home/pi/tv.local` to your actual project path).
     - Copy the service file to the systemd directory:
       ```bash
       sudo cp tvplayer.service /etc/systemd/system/tvplayer.service
