@@ -29,18 +29,18 @@ try:
         width=320,          # --- Display Width for 2" Screen ---
         height=240,         # --- Display Height for 2" Screen ---
         rotation=0,         # --- Adjust rotation: 0, 90, 180 --- (Try 0 first)
-        spi_speed_hz=40000000 # SPI Speed (can try adjusting if issues)
+        spi_speed_hz=10000000 # SPI Speed (Lowered from 40MHz to 10MHz for stability test)
     )
     # -----------------------------------------------------------
     print("ST7789 object created.")
     lcd.begin()
     print("ST7789 LCD Initialized Successfully (320x240).")
 
-    # Create a simple red image
-    print("Creating a red test image...")
-    image = Image.new("RGB", (lcd.width, lcd.height), "RED")
+    # Create a simple blue image
+    print("Creating a blue test image...")
+    image = Image.new("RGB", (lcd.width, lcd.height), "BLUE")
     draw = ImageDraw.Draw(image)
-    draw.text((10, 10), "Hello LCD!", fill="WHITE")
+    draw.text((10, 10), "Hello LCD! (BLUE?)", fill="WHITE")
     print("Test image created.")
 
     # Display the image

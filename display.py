@@ -8,7 +8,7 @@ import glob
 try:
     import RPi.GPIO as GPIO
     import spidev
-    from ST7789 import ST7789
+    from st7789 import ST7789
     HAS_LCD = True
 except ImportError:
     print("WARN: Raspberry Pi specific libraries (RPi.GPIO, spidev, ST7789) not found. LCD output disabled.")
@@ -38,7 +38,7 @@ class DisplayPlayer:
                     backlight=18,       # Backlight (GPIO 18 - Corrected) (Set to None if no backlight control)
                     width=320,          # --- Display Width for 2" Screen ---
                     height=240,         # --- Display Height for 2" Screen ---
-                    rotation=270,       # --- Adjust rotation: 0/90/180/270 (270 often needed for landscape) ---
+                    rotation=0,         # --- Adjust rotation: 0, 90, 180 --- (Using 0)
                     spi_speed_hz=40000000 # SPI Speed (can try adjusting if issues)
                 )
                 # -----------------------------------------------------------
