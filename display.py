@@ -132,16 +132,21 @@ class DisplayPlayer:
     def _playback_loop(self):
         """Main loop that plays frames, pausing if processing is active."""
         print("Starting playback loop...")
+        last_processing_state = False # Track changes
         while not self._stop_event.is_set():
-            try: # Add try block to catch potential issues accessing config
+            is_processing = False # Default
+            try: 
                 # Check if video processing is happening in the main Flask app
-                if current_app.config.get('PROCESSING_VIDEO', False):
+                is_processing = current_app.config.get('PROCESSING_VIDEO', False)
+                if is_processing != last_processing_state:
+                    print(f"Playback loop: Processing flag is now {is_processing}")
+                    last_processing_state = is_processing
+                    
+                if is_processing:
                     # print("Processing active, pausing playback loop...")
                     time.sleep(0.5) # Wait and check again
                     continue # Skip frame display for this iteration
             except RuntimeError:
-                # This can happen if the loop runs before the app context is fully available
-                # or potentially during shutdown. Wait briefly.
                 # print("App context not available yet for config check, waiting...")
                 time.sleep(0.1)
                 continue
@@ -150,19 +155,24 @@ class DisplayPlayer:
                 time.sleep(1) # Wait longer on unexpected errors
                 continue
 
-            # If not processing, continue with playback
+            # --- Reached here: Not processing, proceed with playback ---
+            # print("Playback loop: Processing flag is False, attempting playback.") 
+            
             frames = self._get_frames()
             if not frames:
+                # print("Playback loop: No frames found, waiting...")
                 self.current_frame_path = None
                 time.sleep(1) 
                 continue
 
+            # print(f"Playback loop: Found {len(frames)} frames. Starting loop.")
             for frame_path in frames:
                 if self._stop_event.is_set():
                     break
                 
+                # print(f"Playback loop: Displaying frame {os.path.basename(frame_path)}")
                 start_time = time.monotonic()
-                self._display_image(frame_path)
+                self._display_image(frame_path) # Check for errors inside this call in logs
                 end_time = time.monotonic()
                 
                 elapsed_time = end_time - start_time
