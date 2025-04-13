@@ -126,7 +126,7 @@ Steps:
 
 7.  **Access the Web UI:**
     - Find your Pi's IP address (`hostname -I`).
-    - Open a web browser on another computer on the same network and go to `http://<PI_IP_ADDRESS>` (or `http://tv.local` if Avahi/Bonjour is working).
+    - Open a web browser on another computer on the same network and go to `http://<PI_IP_ADDRESS>:5000` (note the `:5000`) or `http://tv.local:5000` if Avahi/Bonjour is working.
 
 Updating the Code:
 

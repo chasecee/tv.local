@@ -200,15 +200,33 @@ class DisplayPlayer:
         if self._thread and self._thread.is_alive():
             print("Stopping playback thread...")
             self._stop_event.set()
-            self._thread.join()
-            print("Playback thread stopped.")
-        self._thread = None
+            print("Stop event set for playback thread.")
+            self._thread.join(timeout=2.0) # Add a timeout to join
+            if self._thread.is_alive():
+                print("WARN: Playback thread did not join cleanly.")
+            else:
+                print("Playback thread stopped.")
+        else:
+            print("Stop called but playback thread not running or already stopped.")
+            
+        self._thread = None # Ensure thread object is cleared
         
         if self.lcd_available and self.disp:
              try:
                  print("Cleaning up LCD resources...")
-                 # Use Waveshare library's exit method
+                 # Explicitly turn off backlight and clear screen first
+                 print("Setting backlight to 0...")
+                 self.disp.bl_DutyCycle(0)
+                 print("Clearing display to black...")
+                 black_img = Image.new('RGB', (self.width, self.height), (0, 0, 0))
+                 self.disp.ShowImage(black_img)
+                 time.sleep(0.1) # Small delay after commands
+                 
+                 # Now call the library's exit method
+                 print("Calling disp.module_exit()...")
                  self.disp.module_exit()
-                 print("LCD resources cleaned up.")
+                 print("LCD resources cleaned up successfully.")
              except Exception as e:
                  print(f"Error during LCD cleanup: {e}")
+        else:
+            print("LCD resources not available or already cleaned up.")

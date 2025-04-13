@@ -25,8 +25,9 @@ os.makedirs(STATIC_FOLDER, exist_ok=True)
 
 # Function to stop the player thread gracefully on exit
 def shutdown_player():
-    print("Flask app exiting, stopping player...")
+    print("--- Flask app exiting, attempting player shutdown... ---")
     player.stop()
+    print("--- Player shutdown attempt finished. ---")
 
 atexit.register(shutdown_player)
 
@@ -167,4 +168,5 @@ if __name__ == '__main__':
     # TODO: Add arguments for host/port, debug mode
     # Note: Setting debug=True with threading might cause issues like duplicate thread starts.
     # Consider disabling debug mode or using Flask's development server reloading capabilities carefully.
-    app.run(host='0.0.0.0', port=80, debug=False, use_reloader=False) # Disable debug/reloader for stability with threads 
+    print("Starting Flask server on port 5000...")
+    app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False) # Use port 5000 
