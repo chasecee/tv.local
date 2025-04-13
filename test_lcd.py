@@ -19,13 +19,13 @@ lcd = None
 try:
     # --- Configuration for Waveshare 2-inch LCD (ST7789) ---
     # IMPORTANT: Verify these pins against the Waveshare example code (2inch_LCD_test.py)
-    #            Common pins: RST=25, DC=9, BL=13, CS=SPI0 CS0 (GPIO 8), Port=0
+    #            Waveshare Docs: RST=27, DC=25, BL=18, CS=SPI0 CE0 (GPIO 8), Port=0
     lcd = ST7789(
         port=0,             # SPI Port (usually 0)
         cs=0,               # SPI Chip Select (0 or 1, corresponds to CE0 or CE1 / GPIO 8 or 7)
-        dc=9,               # Data/Command (GPIO 9)
-        rst=25,             # Reset (GPIO 25)
-        backlight=13,       # Backlight (GPIO 13) (Set to None if no backlight control)
+        dc=25,              # Data/Command (GPIO 25 - Corrected)
+        rst=27,             # Reset (GPIO 27 - Corrected)
+        backlight=18,       # Backlight (GPIO 18 - Corrected) (Set to None if no backlight control)
         width=320,          # --- Display Width for 2" Screen ---
         height=240,         # --- Display Height for 2" Screen ---
         rotation=270,       # --- Adjust rotation: 0/90/180/270 (270 often needed for landscape) ---
