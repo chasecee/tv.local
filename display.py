@@ -3,7 +3,6 @@ import time
 import threading
 from PIL import Image, ImageDraw, ImageFont
 import glob
-from flask import current_app
 import logging
 
 # Import Waveshare library
@@ -52,7 +51,8 @@ def create_status_image(width, height, message):
     return img
 
 class DisplayPlayer:
-    def __init__(self, frames_folder='frames', fps=15):
+    def __init__(self, app, frames_folder='frames', fps=15):
+        self.app = app
         self.frames_folder = frames_folder
         self.fps = fps
         self.frame_delay = 1.0 / fps
@@ -146,9 +146,8 @@ class DisplayPlayer:
         while not self._stop_event.is_set():
             is_processing = False # Default
             try:
-                # Check if video processing is happening in the main Flask app
-                with current_app.app_context(): # Ensure we have app context
-                    is_processing = current_app.config.get('PROCESSING_VIDEO', False)
+                # Check if video processing is happening - USE self.app.config
+                is_processing = self.app.config.get('PROCESSING_VIDEO', False)
 
                 if is_processing:
                     if not last_processing_state:
@@ -169,10 +168,6 @@ class DisplayPlayer:
                         consecutive_processing_checks = 0 # Reset counter
                     # Proceed to frame checking
 
-            except RuntimeError:
-                logging.warning("Playback loop: App context not available yet for config check, waiting...")
-                time.sleep(0.2)
-                continue
             except Exception as e:
                 logging.error(f"Playback loop: Error checking processing flag: {e}")
                 time.sleep(1) # Wait longer on unexpected errors
@@ -200,15 +195,12 @@ class DisplayPlayer:
                     logging.info("Playback loop: Stop event detected during frame iteration.")
                     break # Exit inner loop
 
-                # Before displaying, check processing flag *again* in case it changed mid-cycle
+                # Before displaying, check processing flag *again* using self.app.config
                 try:
-                    with current_app.app_context():
-                        if current_app.config.get('PROCESSING_VIDEO', False):
-                             logging.info("Playback loop: Processing started mid-frame-cycle. Breaking cycle.")
-                             last_processing_state = True # Set flag to indicate pausing
-                             break # Exit inner loop to re-evaluate processing state
-                except RuntimeError:
-                    logging.warning("Playback loop: App context check failed mid-cycle. Proceeding cautiously.")
+                    if self.app.config.get('PROCESSING_VIDEO', False):
+                         logging.info("Playback loop: Processing started mid-frame-cycle. Breaking cycle.")
+                         last_processing_state = True # Set flag to indicate pausing
+                         break # Exit inner loop to re-evaluate processing state
                 except Exception as e:
                      logging.error(f"Playback loop: Error checking processing flag mid-cycle: {e}")
                      # Decide whether to break or continue

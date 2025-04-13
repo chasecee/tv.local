@@ -17,11 +17,12 @@ ALLOWED_EXTENSIONS = {'mp4'}
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['FRAMES_FOLDER'] = FRAMES_FOLDER
+app.config['STATIC_FOLDER'] = STATIC_FOLDER # Ensure static folder config is set
 app.config['CURRENT_VIDEO_FILENAME'] = None # Track active video filename
 app.config['PROCESSING_VIDEO'] = False # Flag for conversion status
 
-# Initialize Display Player
-player = DisplayPlayer(frames_folder=app.config['FRAMES_FOLDER'])
+# Initialize Display Player - PASS THE APP OBJECT
+player = DisplayPlayer(app=app, frames_folder=app.config['FRAMES_FOLDER'])
 
 # Ensure necessary folders exist
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
