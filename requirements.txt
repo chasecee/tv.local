@@ -1,6 +1,6 @@
 Flask
 Pillow
-st7789 # For SPI LCD Display (requires RPi.GPIO, spidev)
-spidev # Explicitly add spidev for SPI communication
-numpy  # Often required by display/image libraries
-RPi.GPIO # Required for GPIO pin control by ST7789 
+# st7789 # Removed, using Waveshare lib instead
+spidev # Keep, needed for SPI communication
+numpy  # Keep, Pillow or Waveshare lib might need it
+# RPi.GPIO # Removed, Waveshare lib handles GPIO 

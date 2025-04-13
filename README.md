@@ -57,7 +57,10 @@ Steps:
 
     ```bash
     sudo apt update
-    sudo apt install -y git ffmpeg python3-pip
+    sudo apt install -y git ffmpeg python3-pip python3-pil python3-numpy libjpeg62-turbo-dev libopenblas-dev
+    # Note: Installs system-wide python packages PIL and Numpy
+    sudo pip3 install Flask spidev
+    # Installs Flask & spidev using pip (as Waveshare example does for spidev)
     ```
 
 3.  **Clone the Repository:**
@@ -70,53 +73,56 @@ Steps:
     cd tv.local
     ```
 
-4.  **Create Virtual Environment & Install Dependencies:**
+    - **Copy Waveshare Library:** Copy the `lib` directory from the Waveshare example code zip
+      (e.g., `LCD_Module_RPI_code/RaspberryPi/python/lib`) into this project's root (`tv.local/lib`).
 
-    - It's highly recommended to use a Python virtual environment.
+4.  **Install Python Dependencies:**
+
+    - Dependencies should now be installed via `apt` and `pip3` in Step 2.
+    - Verify remaining dependencies from `requirements.txt` (if any - should just be Flask/spidev/numpy/Pillow):
 
     ```bash
-    # Create a virtual environment named .venv
-    python3 -m venv .venv
-    # Activate the virtual environment
-    source .venv/bin/activate
-    # Now install dependencies into the venv
-    pip install -r requirements.txt
-    # You can deactivate later with the command: deactivate
+    # No longer using requirements.txt directly for install, but keep it for reference
+    # sudo pip3 install -r requirements.txt --break-system-packages # Avoid this if possible!
     ```
-
-    - **IMPORTANT:** Whenever you open a new terminal to work on this project,
-      remember to reactivate the environment: `source .venv/bin/activate`
 
 5.  **Configure LCD Pins (if needed):**
 
-    - Open `display.py` (`nano display.py`).
-    - Verify the pin numbers in the `ST7789(...)` initialization match your hardware wiring and the Waveshare example code (`2inch_LCD_test.py`). Adjust `port`, `cs`, `dc`, `rst`, `backlight`, and `rotation` if necessary.
+    - Pin configuration is now handled by the Waveshare library (`lib/lcdconfig.py`)
+    - You generally shouldn't need to modify `display.py` for pins.
 
 6.  **Configure and Enable Systemd Service:**
 
     - Edit the service file: `nano tvplayer.service`
     - **IMPORTANT:** Inside the file, update the `User`, `Group`, and `WorkingDirectory` paths.
-    - **CRITICAL:** Update the `ExecStart` path to use the Python executable **from the virtual environment**. It should look like:
-      `ExecStart=/home/pi/tv.local/.venv/bin/python3 /home/pi/tv.local/app.py`
-      (Adjust `/home/pi/tv.local` to your actual project path).
+    - **CRITICAL:** Ensure the `ExecStart` path uses the **system** Python 3 executable. It should look like:
+      `ExecStart=/usr/bin/python3 /home/pi/tv.local/app.py`
+      (Check `/usr/bin/python3` with `which python3`. Adjust `/home/pi/tv.local` to your path).
     - Copy the service file to the systemd directory:
-      ```bash
-      sudo cp tvplayer.service /etc/systemd/system/tvplayer.service
-      ```
+
+    ```bash
+    sudo cp tvplayer.service /etc/systemd/system/tvplayer.service
+    ```
+
     - Reload systemd, enable the service to start on boot, and start it now:
-      ```bash
-      sudo systemctl daemon-reload
-      sudo systemctl enable tvplayer.service
-      sudo systemctl start tvplayer.service
-      ```
+
+    ```bash
+    sudo systemctl daemon-reload
+    sudo systemctl enable tvplayer.service
+    sudo systemctl start tvplayer.service
+    ```
+
     - Check the status:
-      ```bash
-      sudo systemctl status tvplayer.service
-      ```
+
+    ```bash
+    sudo systemctl status tvplayer.service
+    ```
+
     - View logs (press Ctrl+C to exit):
-      ```bash
-      sudo journalctl -fu tvplayer.service
-      ```
+
+    ```bash
+    sudo journalctl -fu tvplayer.service
+    ```
 
 7.  **Access the Web UI:**
     - Find your Pi's IP address (`hostname -I`).

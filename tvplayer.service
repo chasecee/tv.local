@@ -14,8 +14,9 @@ Group=pi
 WorkingDirectory=/home/pi/tv.local 
 
 # Command to execute the Python application.
-# IMPORTANT: Ensure the path to python3 and app.py are correct for your system.
+# IMPORTANT: Ensure the path to the system python3 and app.py are correct.
 #            Use the full path to the python executable, often found via `which python3`.
+#            Example assumes project cloned to /home/pi/tv.local
 ExecStart=/usr/bin/python3 /home/pi/tv.local/app.py
 
 # Restart the service if it fails
