@@ -173,5 +173,3 @@ Future:
 • Delete/manage uploads from UI
 
 ⸻
-
-You can drop this into a README.md or docs/PRD.md in the new repo. Want a repo structure and base code scaffold next?
