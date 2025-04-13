@@ -1,8 +1,9 @@
 import os
 import time
 import threading
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 import glob
+from flask import current_app
 
 # Import Waveshare library
 try:
@@ -12,6 +13,41 @@ try:
 except ImportError:
     print("WARN: Waveshare library (lib/LCD_2inch.py) not found. LCD output disabled.")
     HAS_LCD = False
+
+# Helper function to create a status message image
+def create_status_image(width, height, message):
+    img = Image.new('RGB', (width, height), "BLACK")
+    draw = ImageDraw.Draw(img)
+    # Load a font (adjust path and size as needed)
+    try:
+        # Try loading a default font; replace with a path if you add one
+        font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" 
+        if not os.path.exists(font_path):
+             # Fallback if that font isn't there (path might differ)
+             font_path = None # PIL will use a default bitmap font
+        font_size = 20
+        font = ImageFont.truetype(font_path, font_size) if font_path else ImageFont.load_default()
+    except IOError:
+        print("WARN: Font file not found. Using default PIL font.")
+        font = ImageFont.load_default() # Fallback to default bitmap font
+        
+    # Calculate text size and position
+    # For Pillow 10+ use: bbox = draw.textbbox((0, 0), message, font=font)
+    # For older Pillow use: text_width, text_height = draw.textsize(message, font=font)
+    # Using textlength for Pillow 10+ compatibility, need bbox for height.
+    try:
+        bbox = draw.textbbox((0, 0), message, font=font)
+        text_width = bbox[2] - bbox[0]
+        text_height = bbox[3] - bbox[1]
+    except AttributeError: # Fallback for older Pillow versions
+        print("WARN: Using older Pillow textsize method. Upgrade Pillow recommended.")
+        text_width, text_height = draw.textsize(message, font=font)
+
+    x = (width - text_width) // 2
+    y = (height - text_height) // 2
+    
+    draw.text((x, y), message, font=font, fill="WHITE")
+    return img
 
 class DisplayPlayer:
     def __init__(self, frames_folder='frames', fps=15):
@@ -32,6 +68,9 @@ class DisplayPlayer:
                 print("Waveshare LCD object created.")
                 self.disp.Init()
                 print("Waveshare LCD Initialized Successfully.")
+                # Store dimensions for status image
+                self.width = self.disp.width
+                self.height = self.disp.height
                 # Optional: Clear display
                 self.disp.clear()
                 # Set backlight (example uses 50%, range 0-100)
@@ -39,6 +78,9 @@ class DisplayPlayer:
                 self.lcd_available = True
             except Exception as e:
                 print(f"Error initializing Waveshare LCD: {e}")
+                # Set default dims even if init fails, for safety
+                self.width = 320 
+                self.height = 240
                 self.disp = None
                 self.lcd_available = False
         else:
@@ -73,10 +115,42 @@ class DisplayPlayer:
             print(f"Error loading/displaying frame {image_path}: {e}")
             self.current_frame_path = None
 
+    def show_processing_message(self):
+        """Displays a 'Processing...' message on the LCD immediately."""
+        if not self.lcd_available or not self.disp:
+            return # Don't try if LCD isn't working
+            
+        try:
+            print("Displaying Processing message...")
+            processing_img = create_status_image(self.width, self.height, "Processing...")
+            # Consider rotating if necessary based on physical orientation vs library rotation
+            # processing_img = processing_img.rotate(180)
+            self.disp.ShowImage(processing_img)
+        except Exception as e:
+            print(f"Error displaying processing message: {e}")
+
     def _playback_loop(self):
-        """Main loop that plays frames."""
+        """Main loop that plays frames, pausing if processing is active."""
         print("Starting playback loop...")
         while not self._stop_event.is_set():
+            try: # Add try block to catch potential issues accessing config
+                # Check if video processing is happening in the main Flask app
+                if current_app.config.get('PROCESSING_VIDEO', False):
+                    # print("Processing active, pausing playback loop...")
+                    time.sleep(0.5) # Wait and check again
+                    continue # Skip frame display for this iteration
+            except RuntimeError:
+                # This can happen if the loop runs before the app context is fully available
+                # or potentially during shutdown. Wait briefly.
+                # print("App context not available yet for config check, waiting...")
+                time.sleep(0.1)
+                continue
+            except Exception as e:
+                print(f"Error checking processing flag: {e}")
+                time.sleep(1) # Wait longer on unexpected errors
+                continue
+
+            # If not processing, continue with playback
             frames = self._get_frames()
             if not frames:
                 self.current_frame_path = None

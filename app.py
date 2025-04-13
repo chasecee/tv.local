@@ -13,6 +13,7 @@ ALLOWED_EXTENSIONS = {'mp4'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['FRAMES_FOLDER'] = FRAMES_FOLDER
 app.config['CURRENT_VIDEO_FILENAME'] = None # Track active video filename
+app.config['PROCESSING_VIDEO'] = False # Flag for conversion status
 
 # Initialize Display Player
 player = DisplayPlayer(frames_folder=app.config['FRAMES_FOLDER'])
@@ -101,9 +102,17 @@ def upload_file():
         file.save(filepath)
         print(f"File {filename} saved to {filepath}")
 
-        # Trigger frame conversion
-        print(f"Attempting to convert {filename} to frames...")
-        success = convert_to_frames(filepath, app.config['FRAMES_FOLDER'])
+        # -- Show processing message and convert --
+        app.config['PROCESSING_VIDEO'] = True
+        player.show_processing_message() 
+        success = False # Default to failure
+        try:
+            print(f"Attempting to convert {filename} to frames...")
+            success = convert_to_frames(filepath, app.config['FRAMES_FOLDER'])
+        finally:
+            app.config['PROCESSING_VIDEO'] = False # Ensure flag is reset
+            print("Processing flag set to False.")
+        # ------------------------------------------
 
         if success:
             print(f"Successfully converted {filename} to frames.")
@@ -130,7 +139,16 @@ def switch_video(filename):
         return redirect(url_for('index'))
 
     print(f"Switching active video to: {filename}")
-    success = convert_to_frames(requested_filepath, app.config['FRAMES_FOLDER'])
+    # -- Show processing message and convert --
+    app.config['PROCESSING_VIDEO'] = True
+    player.show_processing_message()
+    success = False # Default to failure
+    try:
+        success = convert_to_frames(requested_filepath, app.config['FRAMES_FOLDER'])
+    finally:
+        app.config['PROCESSING_VIDEO'] = False # Ensure flag is reset
+        print("Processing flag set to False.")
+    # ------------------------------------------
 
     if success:
         print(f"Successfully converted {filename} to frames for playback.")
