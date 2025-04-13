@@ -66,8 +66,7 @@ Steps:
 
     ```bash
     cd /home/pi
-    git clone <YOUR_REPOSITORY_URL> tv.local
-    # Replace <YOUR_REPOSITORY_URL> with the actual URL of this git repo
+    git clone https://github.com/chasecee/tv.local.git tv.local
     cd tv.local
     ```
 
@@ -119,6 +118,38 @@ Updating the Code:
   # sudo pip3 install -r requirements.txt
   sudo systemctl restart tvplayer.service
   ```
+
+8.  **System Optimization (Optional):**
+    - For better performance, especially on less powerful Pi models, you can disable unused services and hardware features.
+    - **Disable Bluetooth:**
+      ```bash
+      sudo systemctl disable --now bluetooth
+      # To re-enable later if needed:
+      # sudo systemctl enable --now bluetooth
+      ```
+    - **Boot to Command Line (if running headless):** If you don't need the graphical desktop:
+      - Run `sudo raspi-config`
+      - Navigate to `System Options` -> `Boot / Auto Login`
+      - Select `Console` or `Console (Autologin)`.
+      - Reboot when prompted.
+    - **Adjust GPU Memory (if running headless or minimal graphics):**
+      - Run `sudo raspi-config`
+      - Navigate to `Performance Options` -> `GPU Memory`
+      - Enter a lower value (e.g., `16` or `32` MB). The minimum is usually 16MB. Too low might cause issues if any graphics are still used, but 16/32 is often safe for headless/CLI-only setups.
+      - Reboot when prompted.
+    - **Disable HDMI Output (if not using HDMI):**
+      - Run `sudo raspi-config`
+      - Navigate to `Display Options` -> `HDMI Headless Resolution` (or similar wording depending on OS version).
+      - Choose an option to disable HDMI or set a minimal resolution if disable isn't present.
+      - Alternatively, edit `/boot/config.txt` (`sudo nano /boot/config.txt`) and add the line `hdmi_ignore_hotplug=1`. Save and reboot.
+    - **Disable Onboard Audio (if not using audio):**
+      - Run `sudo raspi-config`
+      - Navigate to `System Options` -> `Audio`
+      - Select `Force Headphones` or `Force HDMI` (if HDMI is also disabled, this effectively silences it), or look for an explicit `Disable` option if available.
+      - Alternatively, edit `/boot/config.txt` (`sudo nano /boot/config.txt`), find the line `dtparam=audio=on` and change it to `dtparam=audio=off`. Save and reboot.
+    - **Other Considerations:**
+      - **Disable Avahi:** If you don't need `.local` hostname resolution and will use the Pi's IP address, you can disable Avahi: `sudo systemctl disable --now avahi-daemon`
+      - **Disable WiFi:** If using only Ethernet: `sudo rfkill block wifi` (temporary) or potentially disable via `raspi-config` or `/boot/config.txt` depending on the Pi model and OS version.
 
 ⸻
 
