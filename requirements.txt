@@ -2,4 +2,5 @@ Flask
 Pillow
 st7789 # For SPI LCD Display (requires RPi.GPIO, spidev)
 spidev # Explicitly add spidev for SPI communication
-numpy  # Often required by display/image libraries 
+numpy  # Often required by display/image libraries
+RPi.GPIO # Required for GPIO pin control by ST7789 
