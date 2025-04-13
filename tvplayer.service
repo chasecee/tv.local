@@ -1,0 +1,30 @@
+[Unit]
+Description=Mini TV Player Service
+After=network.target
+
+[Service]
+# User and Group the service should run as.
+# Replace 'pi' with your actual username if different.
+User=pi 
+Group=pi
+
+# Set the working directory to the project root.
+# IMPORTANT: Replace /home/pi/tv.local with the actual absolute path
+#            to where you cloned this project directory on your Pi.
+WorkingDirectory=/home/pi/tv.local 
+
+# Command to execute the Python application.
+# IMPORTANT: Ensure the path to python3 and app.py are correct for your system.
+#            Use the full path to the python executable, often found via `which python3`.
+ExecStart=/usr/bin/python3 /home/pi/tv.local/app.py
+
+# Restart the service if it fails
+Restart=on-failure
+RestartSec=5s
+
+# Standard output and error logging
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target 

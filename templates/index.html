@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mini TV Player</title>
+    <!-- Link to a CSS file in static later -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1>Mini TV Player</h1>
+    
+    <h2>Upload New Video (MP4 only)</h2>
+    <form method=post enctype=multipart/form-data action="{{ url_for('upload_file') }}">
+      <input type=file name=file>
+      <input type=submit value=Upload>
+    </form>
+
+    <h2>Current Video</h2>
+    <p>Currently Playing: {{ current_video }}</p>
+
+    <h2>Available Videos</h2>
+    <ul>
+        {% if available_videos %}
+            {% for video in available_videos %}
+                <li>
+                    {{ video }}
+                    <!-- TODO: Add form/button to switch to this video -->
+                    <form method="POST" action="{{ url_for('switch_video', filename=video) }}" style="display: inline;">
+                        <button type="submit">Play</button>
+                    </form>
+                </li>
+            {% endfor %}
+        {% else %}
+            <li>No videos uploaded yet.</li>
+        {% endif %}
+    </ul>
+    <!-- TODO: Add forms/buttons to switch videos -->
+
+</body>
+</html> 
