@@ -53,7 +53,7 @@ def create_status_image(width, height, message):
     return img
 
 class DisplayPlayer:
-    def __init__(self, app, frames_folder='frames', fps=15):
+    def __init__(self, app, frames_folder='frames', fps=12):
         self.app = app
         self.frames_folder = frames_folder
         self.fps = fps

@@ -170,14 +170,15 @@ def convert_to_frames(video_path, output_folder):
     # Ensure output folder exists after clearing (it might have been deleted if empty)
     os.makedirs(output_folder, exist_ok=True)
 
-    # FFmpeg command: scale to 320x240, 15 FPS, output PNG frames
+    # FFmpeg command: scale to 320x240, 12 FPS, output PNG frames
     # Consider adding -vf "scale=320:240:force_original_aspect_ratio=decrease,pad=320:240:(ow-iw)/2:(oh-ih)/2"
     # if maintaining aspect ratio with padding is desired.
     ffmpeg_cmd = [
         'ffmpeg',
         '-i', video_path,
         '-vf', 'scale=320:240', # Pre-scale frames
-        '-r', '15',              # Output 15 FPS
+        '-r', '12',              # Output 12 FPS (Changed from 15)
+        '-pix_fmt', 'rgb565le',  # Set pixel format to 16-bit RGB
         os.path.join(output_folder, 'frame_%04d.png') # Naming convention
     ]
 
