@@ -1,3 +1,5 @@
+#!/usr/bin/python
+# -*- coding:utf-8 -*-
 import os
 import time
 import threading
@@ -64,14 +66,6 @@ class DisplayPlayer:
         self.width = 320 # Default width
         self.height = 240 # Default height
 
-        # --- Frame Buffer Attributes ---
-        self.buffer_size = 15 # How many frames to load into RAM at once
-        self.frame_buffer = [] # Holds pre-loaded PIL Image objects
-        self.buffer_index = 0 # Current position within the frame_buffer
-        self.current_frame_paths = [] # List of paths for the video being played
-        self.path_index = 0 # Current position within current_frame_paths for loading
-        # --- End Frame Buffer Attributes ---
-
         if HAS_LCD:
             try:
                 # Initialize Waveshare display object
@@ -106,17 +100,6 @@ class DisplayPlayer:
         frames = sorted(glob.glob(frame_pattern))
         return frames
 
-    def _display_image_object(self, img_object):
-        """Displays a pre-loaded PIL Image object on the LCD."""
-        if not self.lcd_available or not self.disp:
-            return
-        try:
-            # Assuming image is already correctly sized/oriented
-            # We might clear current_frame_path here or set it differently if needed
-            self.disp.ShowImage(img_object)
-        except Exception as e:
-            logging.error(f"Error displaying image object: {e}")
-
     def _display_image(self, image_path):
         """Loads the image FROM PATH and displays it on the LCD."""
         if not self.lcd_available or not self.disp:
@@ -150,12 +133,6 @@ class DisplayPlayer:
         consecutive_processing_checks = 0
         consecutive_no_frames_found = 0
 
-        # Clear buffer state initially
-        self.current_frame_paths = []
-        self.frame_buffer = []
-        self.path_index = 0
-        self.buffer_index = 0
-
         while not self._stop_event.is_set():
             is_processing = False
             try:
@@ -179,13 +156,6 @@ class DisplayPlayer:
                         logging.info("Playback loop: Detected PROCESSING_VIDEO = False. Resuming playback checks.")
                         last_processing_state = False
                         consecutive_processing_checks = 0 # Reset counter
-                        # --- Force buffer invalidation on resuming --- 
-                        logging.info("Invalidating frame buffer due to processing state change.")
-                        self.current_frame_paths = [] # Force reload of paths
-                        self.frame_buffer = []      # Clear loaded images
-                        self.path_index = 0
-                        self.buffer_index = 0
-                        # --- End buffer invalidation --- 
                     # Proceed to frame checking
 
             except Exception as e:
@@ -194,19 +164,11 @@ class DisplayPlayer:
                 continue
 
             # --- Get current frame paths --- 
-            frame_paths = self._get_frames()
+            frames = self._get_frames()
 
             # --- Handle no frames found --- 
-            if not frame_paths:
+            if not frames:
                 self.current_frame_path = None
-                # Clear buffer state if frames disappear
-                if self.current_frame_paths:
-                     logging.info("Playback loop: Frames disappeared. Clearing buffer.")
-                     self.current_frame_paths = []
-                     self.frame_buffer = []
-                     self.path_index = 0
-                     self.buffer_index = 0
-                
                 consecutive_no_frames_found += 1
                 if consecutive_no_frames_found == 1 or consecutive_no_frames_found % 10 == 0: # Log first time and then every 10 seconds
                      logging.info(f"Playback loop: No frames found in {self.frames_folder}. Waiting... ({consecutive_no_frames_found} checks)")
@@ -214,85 +176,41 @@ class DisplayPlayer:
                 continue
             else:
                 if consecutive_no_frames_found > 0:
-                    logging.info(f"Playback loop: Found {len(frame_paths)} frames after waiting. Resuming playback.")
+                    logging.info(f"Playback loop: Found {len(frames)} frames after waiting. Resuming playback.")
                     consecutive_no_frames_found = 0 # Reset counter
             
-            # --- Check if frame paths have changed (new video loaded) --- 
-            if frame_paths != self.current_frame_paths:
-                logging.info(f"Playback loop: Detected change in frame paths (new video?). Found {len(frame_paths)} frames.")
-                self.current_frame_paths = frame_paths
-                self.frame_buffer = [] # Invalidate buffer
-                self.path_index = 0    # Reset path index
-                self.buffer_index = 0  # Reset buffer index
-                # If path_index was mid-way, starting new video resets it to 0
+            # --- Loop through and display frames --- 
+            for frame_path in frames:
+                if self._stop_event.is_set():
+                    logging.info("Playback loop: Stop event detected during frame iteration.")
+                    break # Exit inner loop
 
-            # --- Refill buffer if empty --- 
-            if not self.frame_buffer:
-                logging.debug(f"Frame buffer empty. Loading next {self.buffer_size} frames starting from path index {self.path_index}.")
-                frames_to_load = []
-                paths_loaded = 0
-                for i in range(self.buffer_size):
-                    current_path_idx = (self.path_index + i) % len(self.current_frame_paths)
-                    frame_path = self.current_frame_paths[current_path_idx]
-                    try:
-                        img = Image.open(frame_path)
-                        frames_to_load.append(img)
-                        paths_loaded += 1
-                    except Exception as e:
-                        logging.error(f"Error loading frame {frame_path} into buffer: {e}")
-                        # Should we skip or stop?
-                        # Let's stop loading this chunk if one fails.
-                        break 
-                
-                self.frame_buffer = frames_to_load
-                self.buffer_index = 0
-                # Advance path index by the number of frames actually loaded
-                self.path_index = (self.path_index + paths_loaded) % len(self.current_frame_paths)
-                logging.debug(f"Loaded {len(self.frame_buffer)} frames into buffer. Next path index: {self.path_index}")
-                
-                # Handle case where buffer is *still* empty (e.g., all load attempts failed)
-                if not self.frame_buffer:
-                    logging.error("Failed to load any frames into buffer. Waiting.")
-                    time.sleep(1)
-                    continue
+                # Before displaying, check processing flag *again* using self.app.config
+                try:
+                    if self.app.config.get('PROCESSING_VIDEO', False):
+                         logging.info("Playback loop: Processing started mid-frame-cycle. Breaking cycle.")
+                         last_processing_state = True # Set flag to indicate pausing
+                         break # Exit inner loop to re-evaluate processing state
+                except Exception as e:
+                     logging.error(f"Playback loop: Error checking processing flag mid-cycle: {e}")
+                     # Decide whether to break or continue
+                     break # Safer to break and re-evaluate
 
-            # --- Display frame from buffer --- 
-            start_time = time.monotonic()
-            try:
-                img_to_display = self.frame_buffer[self.buffer_index]
-                # logging.debug(f"Displaying frame from buffer index {self.buffer_index}")
-                self._display_image_object(img_to_display)
-                self.buffer_index += 1
-            except IndexError:
-                # This shouldn't happen if buffer loading logic is correct, but safety first
-                logging.warning("Buffer index out of range. Clearing buffer.")
-                self.frame_buffer = []
-                self.buffer_index = 0
-                continue # Skip sleep, try reloading buffer immediately
-            except Exception as e:
-                 logging.error(f"Unexpected error displaying frame from buffer: {e}")
-                 # Maybe clear buffer? Let's try continuing for now.
-                 self.buffer_index += 1 # Still advance index
+                # logging.debug(f"Playback loop: Displaying frame {os.path.basename(frame_path)}")
+                start_time = time.monotonic()
+                self._display_image(frame_path) # Display the frame
+                end_time = time.monotonic()
 
-            end_time = time.monotonic()
-
-            # --- Handle buffer exhaustion --- 
-            if self.buffer_index >= len(self.frame_buffer):
-                logging.debug("Frame buffer exhausted. Will reload on next iteration.")
-                self.frame_buffer = [] # Clear buffer
-                self.buffer_index = 0 # Reset buffer index (though clearing buffer makes it moot)
-                # Path index already advanced during loading
-            
-            # --- Timing & Sleep --- 
-            elapsed_time = end_time - start_time
-            sleep_time = self.frame_delay - elapsed_time
-            if sleep_time > 0:
-                time.sleep(sleep_time)
-            #else:
-            #    logging.warning(f"Playback loop: Frame display/logic took too long ({elapsed_time:.3f}s), skipping sleep.")
+                # --- Timing & Sleep --- 
+                elapsed_time = end_time - start_time
+                sleep_time = self.frame_delay - elapsed_time
+                if sleep_time > 0:
+                    time.sleep(sleep_time)
+                #else:
+                #    logging.warning(f"Playback loop: Frame display/logic took too long ({elapsed_time:.3f}s), skipping sleep.")
 
             if self._stop_event.is_set():
-                 logging.info("Playback loop: Stop event detected after frame processing.")
+                 logging.info("Playback loop: Stop event detected after frame loop.")
                  break # Exit outer loop
 
         # --- End of while loop --- 
