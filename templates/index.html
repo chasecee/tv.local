@@ -4,38 +4,109 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Mini TV Player</title>
-    <!-- Link to a CSS file in static later -->
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        /* Basic inline styles for quick improvement */
+        body { font-family: sans-serif; margin: 2em; background-color: #f8f9fa; color: #333; }
+        h1, h2 { color: #0056b3; border-bottom: 1px solid #ccc; padding-bottom: 0.3em;}
+        .container { background-color: #fff; padding: 2em; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .flash-messages li { list-style: none; margin: 0.5em 0; padding: 0.8em; border-radius: 4px; }
+        .flash-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .flash-error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .flash-info { background-color: #cce5ff; color: #004085; border: 1px solid #b8daff; }
+        .flash-warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+        .video-list form { display: inline-block; margin-left: 0.5em; }
+        .video-list button { padding: 0.3em 0.8em; cursor: pointer; border: 1px solid #ccc; border-radius: 4px; }
+        .video-list .delete-button { background-color: #dc3545; color: white; border-color: #dc3545; }
+        .video-list .play-button { background-color: #28a745; color: white; border-color: #28a745; }
+        .video-list .default-button { background-color: #007bff; color: white; border-color: #007bff; }
+        .video-item { display: flex; align-items: center; justify-content: space-between; padding: 0.5em 0; border-bottom: 1px solid #eee; }
+        .video-item:last-child { border-bottom: none; }
+        .video-actions { display: flex; align-items: center; gap: 0.5em; /* Spacing between buttons */ }
+        .disk-usage { margin-top: 1.5em; padding: 1em; background-color: #e9ecef; border-radius: 4px; }
+    </style>
 </head>
 <body>
-    <h1>Mini TV Player</h1>
-    
-    <h2>Upload New Video (MP4 only)</h2>
-    <form method=post enctype=multipart/form-data action="{{ url_for('upload_file') }}">
-      <input type=file name=file>
-      <input type=submit value=Upload>
-    </form>
+    <div class="container">
+        <h1>Mini TV Player</h1>
 
-    <h2>Current Video</h2>
-    <p>Currently Playing: {{ current_video }}</p>
-
-    <h2>Available Videos</h2>
-    <ul>
-        {% if available_videos %}
-            {% for video in available_videos %}
-                <li>
-                    {{ video }}
-                    <!-- TODO: Add form/button to switch to this video -->
-                    <form method="POST" action="{{ url_for('switch_video', filename=video) }}" style="display: inline;">
-                        <button type="submit">Play</button>
-                    </form>
-                </li>
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <ul class=flash-messages>
+            {% for category, message in messages %}
+              <li class="flash-{{ category }}">{{ message }}</li>
             {% endfor %}
+            </ul>
+          {% endif %}
+        {% endwith %}
+
+        <h2>Upload New Video (MP4 only)</h2>
+        <form method=post enctype=multipart/form-data action="{{ url_for('upload_file') }}">
+          <input type=file name=file required>
+          <button type=submit>Upload</button>
+        </form>
+
+        <h2>Manage Videos</h2>
+        <p>Currently Playing: <strong>{{ current_video if current_video else 'None' }}</strong></p>
+        <p>Default Boot Video: <strong>{{ default_video if default_video else 'None selected' }}</strong></p>
+
+        {% if available_videos %}
+            <form id="default-video-form" method="POST"> <!-- Action will be set by JS -->
+                <div class="video-list">
+                    {% for video in available_videos %}
+                        <div class="video-item">
+                            <div>
+                                <input type="radio" id="default_{{ loop.index }}" name="default_video_choice" value="{{ video }}"
+                                       {% if video == default_video %}checked{% endif %}>
+                                <label for="default_{{ loop.index }}">{{ video }}</label>
+                            </div>
+                            <div class="video-actions">
+                                <!-- Play Button (Switches video) -->
+                                <form method="POST" action="{{ url_for('switch_video', filename=video) }}">
+                                    <button class="play-button" type="submit">Play</button>
+                                </form>
+                                <!-- Delete Button -->
+                                <form method="POST" action="{{ url_for('delete_video', filename=video) }}" onsubmit="return confirm('Are you sure you want to delete {{ video }}?');">
+                                    <button class="delete-button" type="submit">Delete</button>
+                                </form>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+                <button class="default-button" type="button" onclick="setDefaultVideo()">Set Selected as Default</button>
+            </form>
         {% else %}
-            <li>No videos uploaded yet.</li>
+            <p>No videos uploaded yet.</p>
         {% endif %}
-    </ul>
-    <!-- TODO: Add forms/buttons to switch videos -->
+
+        <!-- Disk Usage -->
+        {% if disk_usage %}
+            <div class="disk-usage">
+                Disk Space Free: {{ disk_usage.percent_free }}% ({{ "%.1f"|format(disk_usage.free / (1024*1024*1024)) }} GB free of {{ "%.1f"|format(disk_usage.total / (1024*1024*1024)) }} GB)
+            </div>
+        {% endif %}
+
+    </div> <!-- /container -->
+
+    <script>
+        function setDefaultVideo() {
+            const form = document.getElementById('default-video-form');
+            const selectedVideo = form.querySelector('input[name="default_video_choice"]:checked');
+            if (selectedVideo) {
+                // Construct the URL for the set_default route
+                const filename = selectedVideo.value;
+                // Note: Flask's url_for can't be directly used in client-side JS.
+                // We construct the URL manually. This assumes the base path is '/'.
+                // If deployed under a subpath, this might need adjustment.
+                const actionUrl = `/set_default/${encodeURIComponent(filename)}`;
+                form.action = actionUrl;
+                form.submit();
+            } else {
+                alert('Please select a video to set as default.');
+            }
+        }
+    </script>
 
 </body>
 </html> 

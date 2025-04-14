@@ -1,7 +1,8 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, flash # Added flash
 import os
 import subprocess
 import atexit # Import atexit
+import shutil # Added for disk usage and frame clearing
 from display import DisplayPlayer # Import DisplayPlayer
 import logging # Added for better logging
 
@@ -9,10 +10,15 @@ import logging # Added for better logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 app = Flask(__name__)
+# Secret key is needed for flashing messages
+# In a real app, use a proper secret key, not this placeholder
+app.secret_key = os.urandom(24) 
+
 UPLOAD_FOLDER = 'uploads'
 FRAMES_FOLDER = 'frames'
 STATIC_FOLDER = 'static'
 LAST_VIDEO_FILE = '.last_video' # File to store the last played video filename
+DEFAULT_VIDEO_FILE = '.default_video' # File to store the *chosen* default video
 ALLOWED_EXTENSIONS = {'mp4'}
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -37,44 +43,92 @@ def shutdown_player():
 
 atexit.register(shutdown_player)
 
-# --- Functions for persisting the last video ---
-def save_last_video(filename):
-    """Saves the filename to the persistent store."""
+# --- Functions for persisting video state (last and default) ---
+def _save_state_filename(filepath, filename):
+    """Helper to save a filename to a given state file."""
     try:
-        with open(LAST_VIDEO_FILE, 'w') as f:
+        with open(filepath, 'w') as f:
             f.write(filename)
-        logging.info(f"Saved last video filename: {filename}")
+        logging.info(f"Saved state to {filepath}: {filename}")
     except IOError as e:
-        logging.error(f"Error saving last video state: {e}")
+        logging.error(f"Error saving state to {filepath}: {e}")
 
-def load_last_video():
-    """Loads the filename from the persistent store."""
-    if not os.path.exists(LAST_VIDEO_FILE):
+def _load_state_filename(filepath):
+    """Helper to load a filename from a given state file."""
+    if not os.path.exists(filepath):
         return None
     try:
-        with open(LAST_VIDEO_FILE, 'r') as f:
+        with open(filepath, 'r') as f:
             filename = f.read().strip()
             return filename if filename else None
     except IOError as e:
-        logging.error(f"Error loading last video state: {e}")
+        logging.error(f"Error loading state from {filepath}: {e}")
         return None
+
+def save_last_video(filename):
+    _save_state_filename(LAST_VIDEO_FILE, filename)
+
+def load_last_video():
+    return _load_state_filename(LAST_VIDEO_FILE)
+
+def save_default_video(filename):
+    _save_state_filename(DEFAULT_VIDEO_FILE, filename)
+
+def load_default_video():
+    return _load_state_filename(DEFAULT_VIDEO_FILE)
 # --- End persistence functions ---
 
+# --- Function for disk space ---
+def get_disk_usage(path='.'):
+    """Returns disk usage statistics for the given path."""
+    try:
+        usage = shutil.disk_usage(path)
+        return {
+            'total': usage.total,
+            'used': usage.used,
+            'free': usage.free,
+            'percent_free': round((usage.free / usage.total) * 100, 1) if usage.total > 0 else 0
+        }
+    except FileNotFoundError:
+        logging.error(f"Path not found for disk usage: {path}")
+        return None
+    except Exception as e:
+        logging.error(f"Error getting disk usage: {e}")
+        return None
+# --- End disk space function ---
 
-def convert_to_frames(video_path, output_folder):
-    # Clear existing frames
+# --- Function to clear frames directory ---
+def clear_frames_folder(output_folder):
+    """Removes all files from the frames directory."""
     logging.info(f"Clearing existing frames in {output_folder}...")
+    cleared = True
+    if not os.path.isdir(output_folder):
+        logging.warning(f"Frames folder does not exist: {output_folder}")
+        return True # Nothing to clear
+
     for filename in os.listdir(output_folder):
         file_path = os.path.join(output_folder, filename)
         try:
             if os.path.isfile(file_path) or os.path.islink(file_path):
                 os.unlink(file_path)
-            # Add elif os.path.isdir(file_path): shutil.rmtree(file_path) if needed
+            elif os.path.isdir(file_path):
+                 shutil.rmtree(file_path) # Remove subdirs if any
         except Exception as e:
             logging.error(f'Failed to delete {file_path}. Reason: {e}')
-            return False # Indicate failure
+            cleared = False
+    if cleared:
+        logging.info(f"Successfully cleared {output_folder}.")
+    else:
+        logging.error(f"Failed to completely clear {output_folder}.")
+    return cleared
+# --- End frame clearing function ---
 
-    # Ensure output folder exists after clearing
+def convert_to_frames(video_path, output_folder):
+    # Clear existing frames first
+    if not clear_frames_folder(output_folder):
+        return False # Stop if clearing failed
+
+    # Ensure output folder exists after clearing (it might have been deleted if empty)
     os.makedirs(output_folder, exist_ok=True)
 
     # FFmpeg command: scale to 320x240, 15 FPS, output PNG frames
@@ -117,9 +171,21 @@ def index():
     current_video_filename = app.config.get('CURRENT_VIDEO_FILENAME', 'None')
 
     # Get list of uploaded mp4 files
-    available_videos = [f for f in os.listdir(app.config['UPLOAD_FOLDER']) if allowed_file(f)]
+    available_videos = sorted([f for f in os.listdir(app.config['UPLOAD_FOLDER']) if allowed_file(f)])
 
-    return render_template('index.html', current_video=current_video_filename, available_videos=available_videos)
+    # Get the currently set default video
+    default_video_filename = load_default_video()
+
+    # Get disk usage
+    disk_usage = get_disk_usage(app.config['UPLOAD_FOLDER']) # Check usage of uploads dir mount point
+
+    return render_template(
+        'index.html',
+        current_video=current_video_filename,
+        default_video=default_video_filename,
+        available_videos=available_videos,
+        disk_usage=disk_usage
+    )
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
@@ -150,9 +216,17 @@ def upload_file():
             logging.info(f"Successfully converted {filename} to frames.")
             app.config['CURRENT_VIDEO_FILENAME'] = filename # Update current video
             save_last_video(filename) # Save state on success
+            flash(f'Successfully uploaded and processed "{filename}".', 'success')
+            # Decide if a newly uploaded video should become the default automatically?
+            # Let's require explicit setting via UI for now.
+            # if not load_default_video():
+            #     save_default_video(filename)
+            #     flash('Set as default boot video since none was selected.', 'info')
         else:
             logging.error(f"Failed to convert {filename} to frames.")
-            # TODO: Provide feedback to user on failure
+            flash(f'File "{filename}" uploaded but failed during conversion. Check logs.', 'error')
+            # Cleanup failed upload? Maybe leave it for retry?
+            # os.remove(filepath) ?
 
         return redirect(url_for('index'))
     return redirect(request.url) # Or provide feedback
@@ -187,46 +261,129 @@ def switch_video(filename):
         logging.info(f"Successfully converted {filename} to frames for playback.")
         app.config['CURRENT_VIDEO_FILENAME'] = filename # Update current video
         save_last_video(filename) # Save state on success
+        flash(f'Switched to "{filename}".', 'success')
     else:
         logging.error(f"Failed to convert {filename} for playback.")
-        # TODO: Provide feedback to user on failure
+        flash(f'Could not switch to "{filename}", conversion failed.', 'error')
 
     return redirect(url_for('index'))
 
-# TODO: Add video playback logic (maybe separate module) - DONE via DisplayPlayer
+# --- New Route: Set Default Video ---
+@app.route('/set_default/<filename>', methods=['POST'])
+def set_default(filename):
+    target_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    if not os.path.exists(target_path) or not allowed_file(filename):
+        flash(f'Cannot set default: Video "{filename}" not found or invalid.', 'error')
+        return redirect(url_for('index'))
+
+    save_default_video(filename)
+    flash(f'"{filename}" set as the default video for boot.', 'success')
+    return redirect(url_for('index'))
+# --- End Set Default Route ---
+
+# --- New Route: Delete Video ---
+@app.route('/delete_video/<filename>', methods=['POST'])
+def delete_video(filename):
+    target_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    logging.info(f"Attempting to delete video: {filename} at {target_path}")
+
+    if not os.path.exists(target_path) or not allowed_file(filename):
+        flash(f'Cannot delete: Video "{filename}" not found or invalid.', 'error')
+        return redirect(url_for('index'))
+
+    try:
+        os.remove(target_path)
+        logging.info(f"Deleted video file: {target_path}")
+
+        # Check if this was the default video
+        if filename == load_default_video():
+            save_default_video('') # Clear default
+            logging.info(f"Cleared default video setting because {filename} was deleted.")
+
+        # Check if this was the last video
+        if filename == load_last_video():
+            save_last_video('') # Clear last video
+            logging.info(f"Cleared last video setting because {filename} was deleted.")
+
+        # Check if this was the currently loaded video
+        if filename == app.config.get('CURRENT_VIDEO_FILENAME'):
+            logging.info(f"Deleted video {filename} was the current video. Clearing frames.")
+            app.config['CURRENT_VIDEO_FILENAME'] = None
+            # Clear frames so the player stops showing the old video
+            if not clear_frames_folder(app.config['FRAMES_FOLDER']):
+                flash('Video file deleted, but failed to clear display frames. Player might show stale content.', 'warning')
+            else:
+                 flash(f'Successfully deleted "{filename}" and cleared display.', 'success')
+        else:
+            flash(f'Successfully deleted "{filename}".', 'success')
+
+    except OSError as e:
+        logging.error(f"Error deleting file {target_path}: {e}")
+        flash(f'Error deleting file "{filename}": {e}', 'error')
+    except Exception as e:
+        logging.error(f"Unexpected error deleting video {filename}: {e}")
+        flash(f'An unexpected error occurred while deleting "{filename}".', 'error')
+
+    return redirect(url_for('index'))
+# --- End Delete Route ---
 
 if __name__ == '__main__':
-    # --- Load last video on startup ---
-    initial_video_filename = load_last_video()
-    if initial_video_filename:
-        logging.info(f"Found last video played: {initial_video_filename}")
-        initial_video_path = os.path.join(app.config['UPLOAD_FOLDER'], initial_video_filename)
-        if os.path.exists(initial_video_path):
-            logging.info(f"Video file exists: {initial_video_path}. Converting to frames...")
-            # Convert frames *before* starting the player thread
-            # Set processing flag temporarily (though nothing should be watching yet)
-            app.config['PROCESSING_VIDEO'] = True
-            player.show_processing_message() # Show message on LCD early
-            success = False
-            try:
-                success = convert_to_frames(initial_video_path, app.config['FRAMES_FOLDER'])
-            finally:
-                app.config['PROCESSING_VIDEO'] = False # Reset flag
+    # --- Load video on startup (Default > Last > None) ---
+    video_to_load = None
+    video_load_source = "None"
 
-            if success:
-                app.config['CURRENT_VIDEO_FILENAME'] = initial_video_filename
-                logging.info(f"Pre-loaded frames for {initial_video_filename}")
-            else:
-                logging.error(f"Failed to convert initial video {initial_video_filename} on startup.")
-                # Optionally clear the last video file if conversion fails?
-                # save_last_video('')
+    # 1. Try Default Video
+    default_video_filename = load_default_video()
+    if default_video_filename:
+        logging.info(f"Found default video configured: {default_video_filename}")
+        default_video_path = os.path.join(app.config['UPLOAD_FOLDER'], default_video_filename)
+        if os.path.exists(default_video_path):
+            video_to_load = default_video_filename
+            video_load_source = "Default"
         else:
-            logging.warning(f"Last video file {initial_video_filename} not found in uploads folder. Clearing state.")
-            save_last_video('') # Clear the state if the file is missing
-    else:
-        logging.info("No last video file found, starting with empty player.")
-    # --- End load last video ---
+            logging.warning(f"Default video file '{default_video_filename}' not found in uploads. Clearing default setting.")
+            save_default_video('') # Clear the invalid setting
 
+    # 2. Try Last Video (if default wasn't found/valid)
+    if not video_to_load:
+        last_video_filename = load_last_video()
+        if last_video_filename:
+            logging.info(f"No valid default video. Found last video played: {last_video_filename}")
+            last_video_path = os.path.join(app.config['UPLOAD_FOLDER'], last_video_filename)
+            if os.path.exists(last_video_path):
+                video_to_load = last_video_filename
+                video_load_source = "Last"
+            else:
+                logging.warning(f"Last video file '{last_video_filename}' not found in uploads. Clearing last setting.")
+                save_last_video('') # Clear the invalid setting
+
+    # 3. Convert the chosen video (if any)
+    if video_to_load:
+        logging.info(f"Attempting to load video on startup ({video_load_source}): {video_to_load}")
+        video_path = os.path.join(app.config['UPLOAD_FOLDER'], video_to_load)
+        app.config['PROCESSING_VIDEO'] = True
+        player.show_processing_message() # Show message on LCD early
+        success = False
+        try:
+            success = convert_to_frames(video_path, app.config['FRAMES_FOLDER'])
+        finally:
+            app.config['PROCESSING_VIDEO'] = False # Reset flag
+
+        if success:
+            app.config['CURRENT_VIDEO_FILENAME'] = video_to_load
+            logging.info(f"Successfully pre-loaded frames for {video_to_load} ({video_load_source}) on startup.")
+        else:
+            logging.error(f"Failed to convert initial video {video_to_load} ({video_load_source}) on startup.")
+            # Clear the state file that pointed to the bad video
+            if video_load_source == "Default":
+                save_default_video('')
+            elif video_load_source == "Last":
+                save_last_video('')
+    else:
+        logging.info("No default or last video found/valid, starting with empty player.")
+        # Ensure frames folder is empty if we aren't loading anything
+        clear_frames_folder(app.config['FRAMES_FOLDER'])
+    # --- End load video on startup ---
 
     # Start the display player thread AFTER potentially loading frames
     player.start()

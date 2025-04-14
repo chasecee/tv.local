@@ -158,10 +158,16 @@ Updating the Code:
       - Enter a lower value (e.g., `16` or `32` MB). The minimum is usually 16MB. Too low might cause issues if any graphics are still used, but 16/32 is often safe for headless/CLI-only setups.
       - Reboot when prompted.
     - **Disable HDMI Output (if not using HDMI):**
-      - Run `sudo raspi-config`
-      - Navigate to `Display Options` -> `HDMI Headless Resolution` (or similar wording depending on OS version).
-      - Choose an option to disable HDMI or set a minimal resolution if disable isn't present.
-      - Alternatively, edit `/boot/config.txt` (`sudo nano /boot/config.txt`) and add the line `hdmi_ignore_hotplug=1`. Save and reboot.
+      - The location for this option in `sudo raspi-config` can vary between OS versions (e.g., under `Display Options` or similar). Look for settings related to headless operation or HDMI resolution.
+      - **Alternatively, and more reliably:** Edit `/boot/config.txt` directly:
+        ```bash
+        sudo nano /boot/config.txt
+        ```
+        Add the following line anywhere in the file:
+        ```
+        hdmi_ignore_hotplug=1
+        ```
+        Save the file (Ctrl+X, then Y, then Enter) and reboot.
     - **Disable Onboard Audio (if not using audio):**
       - Run `sudo raspi-config`
       - Navigate to `System Options` -> `Audio`
