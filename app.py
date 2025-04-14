@@ -5,6 +5,7 @@ import atexit # Import atexit
 import shutil # Added for disk usage and frame clearing
 from display import DisplayPlayer # Import DisplayPlayer
 import logging # Added for better logging
+import time # For checking modification times (optional optimization)
 
 # Configure basic logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -19,6 +20,7 @@ FRAMES_FOLDER = 'frames'
 STATIC_FOLDER = 'static'
 LAST_VIDEO_FILE = '.last_video' # File to store the last played video filename
 DEFAULT_VIDEO_FILE = '.default_video' # File to store the *chosen* default video
+VIDEO_MARKER_FILE = os.path.join(FRAMES_FOLDER, '.video_marker') # Marker for existing frames
 ALLOWED_EXTENSIONS = {'mp4'}
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -76,7 +78,39 @@ def save_default_video(filename):
 
 def load_default_video():
     return _load_state_filename(DEFAULT_VIDEO_FILE)
-# --- End persistence functions ---
+
+# --- New Marker File Functions ---
+def write_video_marker(filename):
+    """Writes the currently framed video filename to the marker file."""
+    try:
+        # Ensure frames folder exists before writing marker
+        os.makedirs(FRAMES_FOLDER, exist_ok=True)
+        with open(VIDEO_MARKER_FILE, 'w') as f:
+            f.write(filename)
+        logging.info(f"Wrote video marker: {filename}")
+    except IOError as e:
+        logging.error(f"Error writing video marker: {e}")
+
+def read_video_marker():
+    """Reads the video filename from the marker file."""
+    if not os.path.exists(VIDEO_MARKER_FILE):
+        return None
+    try:
+        with open(VIDEO_MARKER_FILE, 'r') as f:
+            return f.read().strip()
+    except IOError as e:
+        logging.error(f"Error reading video marker: {e}")
+        return None
+
+def remove_video_marker():
+    """Removes the video marker file if it exists."""
+    if os.path.exists(VIDEO_MARKER_FILE):
+        try:
+            os.remove(VIDEO_MARKER_FILE)
+            logging.info("Removed video marker file.")
+        except OSError as e:
+            logging.error(f"Error removing video marker file: {e}")
+# --- End Marker File Functions ---
 
 # --- Function for disk space ---
 def get_disk_usage(path='.'):
@@ -106,7 +140,12 @@ def clear_frames_folder(output_folder):
         logging.warning(f"Frames folder does not exist: {output_folder}")
         return True # Nothing to clear
 
+    remove_video_marker() # Remove marker when clearing frames
+
     for filename in os.listdir(output_folder):
+        # Skip the marker file itself if it somehow wasn't deleted yet
+        if filename == os.path.basename(VIDEO_MARKER_FILE):
+            continue
         file_path = os.path.join(output_folder, filename)
         try:
             if os.path.isfile(file_path) or os.path.islink(file_path):
@@ -149,6 +188,9 @@ def convert_to_frames(video_path, output_folder):
         logging.debug("FFmpeg stdout:", result.stdout)
         logging.debug("FFmpeg stderr:", result.stderr)
         logging.info("Frame conversion successful.")
+        # Write marker on successful conversion
+        source_filename = os.path.basename(video_path)
+        write_video_marker(source_filename)
         return True # Indicate success
     except FileNotFoundError:
         logging.error("Error: ffmpeg command not found. Please ensure FFmpeg is installed and in PATH.")
@@ -314,6 +356,7 @@ def delete_video(filename):
                 flash('Video file deleted, but failed to clear display frames. Player might show stale content.', 'warning')
             else:
                  flash(f'Successfully deleted "{filename}" and cleared display.', 'success')
+            # No need to explicitly remove marker here, clear_frames_folder does it
         else:
             flash(f'Successfully deleted "{filename}".', 'success')
 
@@ -361,28 +404,47 @@ if __name__ == '__main__':
     if video_to_load:
         logging.info(f"Attempting to load video on startup ({video_load_source}): {video_to_load}")
         video_path = os.path.join(app.config['UPLOAD_FOLDER'], video_to_load)
-        app.config['PROCESSING_VIDEO'] = True
-        player.show_processing_message() # Show message on LCD early
-        success = False
-        try:
-            success = convert_to_frames(video_path, app.config['FRAMES_FOLDER'])
-        finally:
-            app.config['PROCESSING_VIDEO'] = False # Reset flag
 
-        if success:
-            app.config['CURRENT_VIDEO_FILENAME'] = video_to_load
-            logging.info(f"Successfully pre-loaded frames for {video_to_load} ({video_load_source}) on startup.")
+        # --- Check if frames already exist and match --- 
+        marker_filename = read_video_marker()
+        frames_exist = any(fname.startswith('frame_') and fname.endswith('.png') for fname in os.listdir(FRAMES_FOLDER)) 
+
+        if marker_filename == video_to_load and frames_exist:
+             logging.info(f"Marker file matches '{video_to_load}' and frames exist. Skipping conversion.")
+             app.config['PROCESSING_VIDEO'] = False # Ensure this is false
+             app.config['CURRENT_VIDEO_FILENAME'] = video_to_load
+             # Player will pick up existing frames
         else:
-            logging.error(f"Failed to convert initial video {video_to_load} ({video_load_source}) on startup.")
-            # Clear the state file that pointed to the bad video
-            if video_load_source == "Default":
-                save_default_video('')
-            elif video_load_source == "Last":
-                save_last_video('')
+             if marker_filename != video_to_load:
+                 logging.info(f"Marker file ('{marker_filename}') does not match target video ('{video_to_load}'). Will convert.")
+             if not frames_exist:
+                 logging.info("Frames directory is empty or missing PNG frames. Will convert.")
+             
+             # --- Proceed with conversion --- 
+             app.config['PROCESSING_VIDEO'] = True
+             player.show_processing_message() # Show message on LCD early
+             success = False
+             try:
+                 success = convert_to_frames(video_path, app.config['FRAMES_FOLDER'])
+             finally:
+                 app.config['PROCESSING_VIDEO'] = False # Reset flag
+
+             if success:
+                 app.config['CURRENT_VIDEO_FILENAME'] = video_to_load
+                 logging.info(f"Successfully converted and loaded frames for {video_to_load} ({video_load_source}) on startup.")
+             else:
+                 logging.error(f"Failed to convert initial video {video_to_load} ({video_load_source}) on startup.")
+                 # Clear the state file that pointed to the bad video
+                 if video_load_source == "Default":
+                     save_default_video('')
+                 elif video_load_source == "Last":
+                     save_last_video('')
+                 # Also clear the marker if conversion failed
+                 remove_video_marker()
     else:
         logging.info("No default or last video found/valid, starting with empty player.")
         # Ensure frames folder is empty if we aren't loading anything
-        clear_frames_folder(app.config['FRAMES_FOLDER'])
+        clear_frames_folder(app.config['FRAMES_FOLDER']) # This also removes the marker
     # --- End load video on startup ---
 
     # Start the display player thread AFTER potentially loading frames
