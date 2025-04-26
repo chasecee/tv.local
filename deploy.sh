@@ -5,9 +5,12 @@ echo "Installing/updating system dependencies..."
 sudo apt update
 sudo apt install -y python3-pip python3-dev python3-flask python3-pil python3-numpy ffmpeg
 
-echo "Installing PyInstaller directly..."
-# Since this is a dedicated Pi, we'll use --break-system-packages
-python3 -m pip install --break-system-packages pyinstaller
+echo "Installing PyInstaller system-wide..."
+# Full send with sudo pip - it's a dedicated Pi after all! 🚀
+sudo pip3 install --break-system-packages pyinstaller
+
+# Add local bin to PATH for this session
+export PATH="$HOME/.local/bin:$PATH"
 
 echo "Pulling latest code..."
 git pull
@@ -16,7 +19,12 @@ echo "Cleaning old build..."
 rm -rf dist/ build/ tvlocal.spec
 
 echo "Building fresh binary..."
-pyinstaller --onefile --name tvlocal main.py
+# Use full path to pyinstaller if PATH update doesn't take effect
+if command -v pyinstaller &> /dev/null; then
+    pyinstaller --onefile --name tvlocal main.py
+else
+    ~/.local/bin/pyinstaller --onefile --name tvlocal main.py
+fi
 
 echo "Stopping service..."
 sudo systemctl stop tv.local || true  # Don't fail if service doesn't exist
