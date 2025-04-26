@@ -3,9 +3,47 @@
 import os
 import time
 import threading
-from PIL import Image, ImageDraw, ImageFont
-import glob
 import logging
+import sys
+import subprocess
+import glob
+
+# Configure logging first
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+def _auto_repair_pil():
+    """Automatically attempt to repair PIL installation using system packages"""
+    try:
+        logging.info("Attempting automatic PIL repair using apt...")
+        
+        # Remove and reinstall python3-pil using apt
+        subprocess.run(['sudo', 'apt', 'remove', '-y', 'python3-pil'], check=True)
+        subprocess.run(['sudo', 'apt', 'install', '-y', 'python3-pil'], check=True)
+        
+        # Give system a moment to settle
+        time.sleep(2)
+        
+        # Try import again
+        from PIL import Image, ImageDraw, ImageFont
+        return True, (Image, ImageDraw, ImageFont)
+    except Exception as e:
+        logging.error(f"Auto-repair failed: {e}")
+        return False, None
+
+# Attempt PIL import with auto-repair
+try:
+    from PIL import Image, ImageDraw, ImageFont
+except (ImportError, ValueError) as e:
+    logging.error(f"Initial PIL import failed: {e}")
+    success, modules = _auto_repair_pil()
+    if success:
+        Image, ImageDraw, ImageFont = modules
+        logging.info("Successfully recovered PIL import!")
+    else:
+        logging.error("Could not recover PIL import after repair attempt")
+        # Wait 30 seconds before exiting to allow service restart to kick in
+        time.sleep(30)
+        sys.exit(1)
 
 # Import Waveshare library
 try:
