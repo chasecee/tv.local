@@ -1,7 +1,7 @@
 RD: Mini TV Player
 
 Overview:
-A self-contained Raspberry Pi Zero 2 W display that plays looping video content on a 2" SPI LCD. Users upload MP4 files via a web UI hosted at http://tv.local/. Videos are automatically converted into frame images for smooth playback.
+A self-contained Raspberry Pi Zero 2 W display that plays looping video content on a 2" SPI LCD. Users upload MP4 files via a web UI hosted at http://tv.local/. Videos are automatically converted into frame images for smooth playback. The application can be deployed as a standalone binary for improved reliability and resilience against power loss.
 
 ⸻
 
@@ -87,6 +87,28 @@ cd /home/pi/tv.local
 git pull
 sudo ./install.sh  # This will update service files and permissions
 ```
+
+Binary Deployment (Recommended):
+For improved reliability, especially in environments with frequent power loss, you can deploy the application as a standalone binary:
+
+1. **Run deploy script:**
+
+   ```bash
+   ./deploy.sh
+   ```
+
+   This will:
+
+   - Install/update required apt packages (python3-flask, python3-pil, python3-pyinstaller, etc.)
+   - Pull latest code
+   - Build a fresh binary
+   - Stop the service
+   - Replace the old binary
+   - Restart the service
+
+   The binary deployment is more resilient to power loss and filesystem corruption as it doesn't rely on .pyc files or a complete Python environment.
+
+   Note: All Python dependencies are managed through apt for maximum system stability.
 
 Troubleshooting:
 
