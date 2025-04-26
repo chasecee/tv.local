@@ -450,8 +450,5 @@ if __name__ == '__main__':
 
     # Start the display player thread AFTER potentially loading frames
     player.start()
-    # TODO: Add arguments for host/port, debug mode
-    # Note: Setting debug=True with threading might cause issues like duplicate thread starts.
-    # Consider disabling debug mode or using Flask's development server reloading capabilities carefully.
     logging.info("Starting Flask server on port 80...")
     app.run(host='0.0.0.0', port=80, debug=False, use_reloader=False) # Use port 80 for root access 

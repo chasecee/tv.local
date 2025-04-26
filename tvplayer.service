@@ -3,11 +3,6 @@ Description=Mini TV Player Service
 After=network.target
 
 [Service]
-# User and Group the service should run as.
-# Replace 'pi' with your actual username if different.
-User=pi 
-Group=pi
-
 # Set the working directory to the project root.
 # IMPORTANT: Replace /home/pi/tv.local with the actual absolute path
 #            to where you cloned this project directory on your Pi.

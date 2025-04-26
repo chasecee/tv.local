@@ -13,8 +13,9 @@ Features:
 • View current video
 • Switch between available clips
 • Auto convert uploaded MP4 to pre-scaled PNG frames using FFmpeg
-• Loop video playback on LCD at 15 FPS
+• Loop video playback on LCD at 12 FPS
 • Uses Python (Flask for UI, PIL for display)
+• Self-healing PIL installation if corruption occurs
 
 ⸻
 
@@ -58,124 +59,93 @@ Steps:
     ```bash
     sudo apt update
     sudo apt install -y git ffmpeg python3-pip python3-pil python3-numpy libjpeg62-turbo-dev libopenblas-dev
-    # Note: Installs system-wide python packages PIL and Numpy
     sudo pip3 install Flask spidev
-    # Installs Flask & spidev using pip (as Waveshare example does for spidev)
     ```
 
-3.  **Clone the Repository:**
-
-    - Choose a location (e.g., the home directory `/home/pi`).
+3.  **Clone and Install:**
 
     ```bash
     cd /home/pi
     git clone https://github.com/chasecee/tv.local.git tv.local
     cd tv.local
+    sudo ./install.sh
     ```
 
     - **Copy Waveshare Library:** Copy the `lib` directory from the Waveshare example code zip
       (e.g., `LCD_Module_RPI_code/RaspberryPi/python/lib`) into this project's root (`tv.local/lib`).
 
-4.  **Install Python Dependencies:**
-
-    - Dependencies should now be installed via `apt` and `pip3` in Step 2.
-    - Verify remaining dependencies from `requirements.txt` (if any - should just be Flask/spidev/numpy/Pillow):
-
-    ```bash
-    # No longer using requirements.txt directly for install, but keep it for reference
-    # sudo pip3 install -r requirements.txt --break-system-packages # Avoid this if possible!
-    ```
-
-5.  **Configure LCD Pins (if needed):**
-
-    - Pin configuration is now handled by the Waveshare library (`lib/lcdconfig.py`)
-    - You generally shouldn't need to modify `display.py` for pins.
-
-6.  **Configure and Enable Systemd Service:**
-
-    - Edit the service file: `nano tvplayer.service`
-    - **IMPORTANT:** Inside the file, update the `User`, `Group`, and `WorkingDirectory` paths.
-    - **CRITICAL:** Ensure the `ExecStart` path uses the **system** Python 3 executable. It should look like:
-      `ExecStart=/usr/bin/python3 /home/pi/tv.local/app.py`
-      (Check `/usr/bin/python3` with `which python3`. Adjust `/home/pi/tv.local` to your path).
-    - Copy the service file to the systemd directory:
-
-    ```bash
-    sudo cp tvplayer.service /etc/systemd/system/tvplayer.service
-    ```
-
-    - Reload systemd, enable the service to start on boot, and start it now:
-
-    ```bash
-    sudo systemctl daemon-reload
-    sudo systemctl enable tvplayer.service
-    sudo systemctl start tvplayer.service
-    ```
-
-    - Check the status:
-
-    ```bash
-    sudo systemctl status tvplayer.service
-    ```
-
-    - View logs (press Ctrl+C to exit):
-
-    ```bash
-    sudo journalctl -fu tvplayer.service
-    ```
-
-7.  **Access the Web UI:**
-    - Find your Pi's IP address (`hostname -I`).
-    - Open a web browser on another computer on the same network and go to `http://<PI_IP_ADDRESS>:5000` (note the `:5000`) or `http://tv.local:5000` if Avahi/Bonjour is working.
+4.  **Access the Web UI:**
+    - Find your Pi's IP address (`hostname -I`)
+    - Open a web browser on another computer on the same network
+    - Go to `http://<PI_IP_ADDRESS>` or `http://tv.local` if Avahi/Bonjour is working
+    - No port number needed - the web interface runs on standard port 80
 
 Updating the Code:
 
-- To get the latest changes from your git repository:
-  ```bash
-  cd /home/pi/tv.local  # Or your project directory
-  git pull
-  # You might need to reinstall dependencies if requirements.txt changed
-  # sudo pip3 install -r requirements.txt
-  sudo systemctl restart tvplayer.service
-  ```
+```bash
+cd /home/pi/tv.local
+git pull
+sudo ./install.sh  # This will update service files and permissions
+```
 
-8.  **System Optimization (Optional):**
-    - For better performance, especially on less powerful Pi models, you can disable unused services and hardware features.
-    - **Disable Bluetooth:**
-      ```bash
-      sudo systemctl disable --now bluetooth
-      # To re-enable later if needed:
-      # sudo systemctl enable --now bluetooth
-      ```
-    - **Boot to Command Line (if running headless):** If you don't need the graphical desktop:
-      - Run `sudo raspi-config`
-      - Navigate to `System Options` -> `Boot / Auto Login`
-      - Select `Console` or `Console (Autologin)`.
-      - Reboot when prompted.
-    - **Adjust GPU Memory (if running headless or minimal graphics):**
-      - Run `sudo raspi-config`
-      - Navigate to `Performance Options` -> `GPU Memory`
-      - Enter a lower value (e.g., `16` or `32` MB). The minimum is usually 16MB. Too low might cause issues if any graphics are still used, but 16/32 is often safe for headless/CLI-only setups.
-      - Reboot when prompted.
-    - **Disable HDMI Output (if not using HDMI):**
-      - The location for this option in `sudo raspi-config` can vary between OS versions (e.g., under `Display Options` or similar). Look for settings related to headless operation or HDMI resolution.
-      - **Alternatively, and more reliably:** Edit `/boot/config.txt` directly:
-        ```bash
-        sudo nano /boot/config.txt
-        ```
-        Add the following line anywhere in the file:
-        ```
-        hdmi_ignore_hotplug=1
-        ```
-        Save the file (Ctrl+X, then Y, then Enter) and reboot.
-    - **Disable Onboard Audio (if not using audio):**
-      - Run `sudo raspi-config`
-      - Navigate to `System Options` -> `Audio`
-      - Select `Force Headphones` or `Force HDMI` (if HDMI is also disabled, this effectively silences it), or look for an explicit `Disable` option if available.
-      - Alternatively, edit `/boot/config.txt` (`sudo nano /boot/config.txt`), find the line `dtparam=audio=on` and change it to `dtparam=audio=off`. Save and reboot.
-    - **Other Considerations:**
-      - **Disable Avahi:** If you don't need `.local` hostname resolution and will use the Pi's IP address, you can disable Avahi: `sudo systemctl disable --now avahi-daemon`
-      - **Disable WiFi:** If using only Ethernet: `sudo rfkill block wifi` (temporary) or potentially disable via `raspi-config` or `/boot/config.txt` depending on the Pi model and OS version.
+Troubleshooting:
+
+1. **Check Service Status:**
+
+   ```bash
+   sudo systemctl status tvplayer
+   ```
+
+2. **View Logs:**
+
+   ```bash
+   sudo journalctl -fu tvplayer
+   ```
+
+3. **Common Issues:**
+   - If the web interface isn't accessible, check that the service is running
+   - If videos won't upload, check permissions on the uploads directory
+   - The system will automatically attempt to repair itself if PIL becomes corrupted
+
+⸻
+
+System Optimization (Optional):
+
+- **Disable Bluetooth:**
+  ```bash
+  sudo systemctl disable --now bluetooth
+  # To re-enable later if needed:
+  # sudo systemctl enable --now bluetooth
+  ```
+- **Boot to Command Line (if running headless):** If you don't need the graphical desktop:
+  - Run `sudo raspi-config`
+  - Navigate to `System Options` -> `Boot / Auto Login`
+  - Select `Console` or `Console (Autologin)`.
+  - Reboot when prompted.
+- **Adjust GPU Memory (if running headless or minimal graphics):**
+  - Run `sudo raspi-config`
+  - Navigate to `Performance Options` -> `GPU Memory`
+  - Enter a lower value (e.g., `16` or `32` MB). The minimum is usually 16MB. Too low might cause issues if any graphics are still used, but 16/32 is often safe for headless/CLI-only setups.
+  - Reboot when prompted.
+- **Disable HDMI Output (if not using HDMI):**
+  - The location for this option in `sudo raspi-config` can vary between OS versions (e.g., under `Display Options` or similar). Look for settings related to headless operation or HDMI resolution.
+  - **Alternatively, and more reliably:** Edit `/boot/config.txt` directly:
+    ```bash
+    sudo nano /boot/config.txt
+    ```
+    Add the following line anywhere in the file:
+    ```
+    hdmi_ignore_hotplug=1
+    ```
+    Save the file (Ctrl+X, then Y, then Enter) and reboot.
+- **Disable Onboard Audio (if not using audio):**
+  - Run `sudo raspi-config`
+  - Navigate to `System Options` -> `Audio`
+  - Select `Force Headphones` or `Force HDMI` (if HDMI is also disabled, this effectively silences it), or look for an explicit `Disable` option if available.
+  - Alternatively, edit `/boot/config.txt` (`sudo nano /boot/config.txt`), find the line `dtparam=audio=on` and change it to `dtparam=audio=off`. Save and reboot.
+- **Other Considerations:**
+  - **Disable Avahi:** If you don't need `.local` hostname resolution and will use the Pi's IP address, you can disable Avahi: `sudo systemctl disable --now avahi-daemon`
+  - **Disable WiFi:** If using only Ethernet: `sudo rfkill block wifi` (temporary) or potentially disable via `raspi-config` or `/boot/config.txt` depending on the Pi model and OS version.
 
 ⸻
 
