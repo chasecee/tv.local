@@ -3,10 +3,13 @@ set -e
 
 echo "Installing/updating system dependencies..."
 sudo apt update
-sudo apt install -y python3-pip python3-dev python3-flask python3-pil python3-numpy ffmpeg
+sudo apt install -y python3-pip python3-dev python3-flask python3-pil python3-numpy ffmpeg python3-pipx
 
-echo "Installing PyInstaller (via pip)..."
-sudo pip3 install --no-cache-dir pyinstaller
+echo "Installing PyInstaller using pipx..."
+# Remove old PyInstaller if it exists
+pipx uninstall pyinstaller || true
+# Install fresh PyInstaller
+pipx install pyinstaller
 
 echo "Pulling latest code..."
 git pull
@@ -15,22 +18,24 @@ echo "Cleaning old build..."
 rm -rf dist/ build/ tvlocal.spec
 
 echo "Building fresh binary..."
-pyinstaller --onefile --name tvlocal main.py
+# Use pipx run to execute PyInstaller in isolated environment
+pipx run pyinstaller --onefile --name tvlocal main.py
 
 echo "Stopping service..."
-sudo systemctl stop tv.local
+sudo systemctl stop tv.local || true  # Don't fail if service doesn't exist
 
 echo "Replacing old binary..."
 sudo cp dist/tvlocal /home/pi/tv.local/tvlocal
 sudo chmod +x /home/pi/tv.local/tvlocal
 
+# Create necessary directories if they don't exist
+sudo mkdir -p /home/pi/tv.local/uploads /home/pi/tv.local/frames /home/pi/tv.local/static
+sudo chown -R pi:pi /home/pi/tv.local/
+
 echo "Starting service..."
-sudo systemctl start tv.local
+sudo systemctl start tv.local || true  # Don't fail if service doesn't exist
 
-echo "Deployment complete!"
-
-# Create necessary directories
-mkdir -p uploads frames static
+echo "Deployment complete! 🎉"
 
 # Check for FFmpeg
 if ! command -v ffmpeg &> /dev/null; then
