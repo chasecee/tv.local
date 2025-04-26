@@ -5,89 +5,92 @@ import time
 import threading
 import logging
 import sys
-import subprocess
+from PIL import Image, ImageDraw, ImageFont  # Direct import since it will be bundled
 import glob
 
 # Configure logging first
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def _auto_repair_pil():
-    """Automatically attempt to repair PIL installation using system packages"""
-    try:
-        logging.info("Attempting automatic PIL repair using apt...")
-        
-        # Remove and reinstall python3-pil using apt
-        subprocess.run(['sudo', 'apt', 'remove', '-y', 'python3-pil'], check=True)
-        subprocess.run(['sudo', 'apt', 'install', '-y', 'python3-pil'], check=True)
-        
-        # Give system a moment to settle
-        time.sleep(2)
-        
-        # Try import again
-        from PIL import Image, ImageDraw, ImageFont
-        return True, (Image, ImageDraw, ImageFont)
-    except Exception as e:
-        logging.error(f"Auto-repair failed: {e}")
-        return False, None
-
-# Attempt PIL import with auto-repair
-try:
-    from PIL import Image, ImageDraw, ImageFont
-except (ImportError, ValueError) as e:
-    logging.error(f"Initial PIL import failed: {e}")
-    success, modules = _auto_repair_pil()
-    if success:
-        Image, ImageDraw, ImageFont = modules
-        logging.info("Successfully recovered PIL import!")
-    else:
-        logging.error("Could not recover PIL import after repair attempt")
-        # Wait 30 seconds before exiting to allow service restart to kick in
-        time.sleep(30)
-        sys.exit(1)
-
 # Import Waveshare library
 try:
     from lib import LCD_2inch
     HAS_LCD = True
-    print("Waveshare LCD library imported.")
+    logging.info("Waveshare LCD library imported.")
 except ImportError:
-    print("WARN: Waveshare library (lib/LCD_2inch.py) not found. LCD output disabled.")
+    logging.warning("Waveshare library (lib/LCD_2inch.py) not found. LCD output disabled.")
     HAS_LCD = False
 
 # Helper function to create a status message image
-def create_status_image(width, height, message):
-    img = Image.new('RGB', (width, height), "BLACK")
+def create_status_image(width, height, message, progress=None, rotate=True):
+    """
+    Create a status message image with optional progress bar.
+    Args:
+        width: Image width
+        height: Image height
+        message: Text to display
+        progress: Float between 0 and 1 for progress bar, or None for no bar
+        rotate: Whether to rotate the image 90 degrees clockwise
+    """
+    # Create image in landscape first, we'll rotate later
+    img = Image.new('RGB', (height if rotate else width, width if rotate else height), "BLACK")
     draw = ImageDraw.Draw(img)
-    # Load a font (adjust path and size as needed)
+    
     try:
-        # Try loading a default font; replace with a path if you add one
+        # Try loading a default font
         font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
         if not os.path.exists(font_path):
-             # Fallback if that font isn't there (path might differ)
-             logging.warning(f"Font not found at {font_path}, trying default.")
-             font_path = None # PIL will use a default bitmap font
-        font_size = 20
+            logging.warning(f"Font not found at {font_path}, trying default.")
+            font_path = None
+        font_size = 24  # Slightly larger font
         font = ImageFont.truetype(font_path, font_size) if font_path else ImageFont.load_default()
     except IOError:
         logging.warning("Font file not found. Using default PIL font.")
-        font = ImageFont.load_default() # Fallback to default bitmap font
-        
-    # Calculate text size and position
-    # For Pillow 10+ use: bbox = draw.textbbox((0, 0), message, font=font)
-    # For older Pillow use: text_width, text_height = draw.textsize(message, font=font)
-    # Using textlength for Pillow 10+ compatibility, need bbox for height.
+        font = ImageFont.load_default()
+    
+    # Calculate text position
     try:
         bbox = draw.textbbox((0, 0), message, font=font)
         text_width = bbox[2] - bbox[0]
         text_height = bbox[3] - bbox[1]
-    except AttributeError: # Fallback for older Pillow versions
-        logging.warning("Using older Pillow textsize method. Upgrade Pillow recommended.")
+    except AttributeError:
         text_width, text_height = draw.textsize(message, font=font)
 
-    x = (width - text_width) // 2
-    y = (height - text_height) // 2
-    
+    # Position text in center
+    img_width = img.width
+    img_height = img.height
+    x = (img_width - text_width) // 2
+    y = (img_height - text_height) // 2 - 20  # Move text up to make room for progress bar
+
+    # Draw text
     draw.text((x, y), message, font=font, fill="WHITE")
+
+    # Draw progress bar if provided
+    if progress is not None:
+        progress = max(0, min(1, progress))  # Clamp between 0 and 1
+        bar_width = int(img_width * 0.8)  # 80% of width
+        bar_height = 10
+        bar_x = (img_width - bar_width) // 2
+        bar_y = y + text_height + 20  # Position below text
+        
+        # Draw bar background
+        draw.rectangle(
+            [(bar_x, bar_y), (bar_x + bar_width, bar_y + bar_height)],
+            outline="WHITE",
+            width=1
+        )
+        
+        # Draw progress
+        progress_width = int(bar_width * progress)
+        if progress_width > 0:
+            draw.rectangle(
+                [(bar_x + 2, bar_y + 2), (bar_x + progress_width - 2, bar_y + bar_height - 2)],
+                fill="WHITE"
+            )
+
+    # Rotate if requested
+    if rotate:
+        img = img.rotate(90, expand=True)  # 90 degrees clockwise
+    
     return img
 
 class DisplayPlayer:
@@ -150,16 +153,24 @@ class DisplayPlayer:
             logging.error(f"Error loading/displaying frame {image_path}: {e}")
             self.current_frame_path = None
 
-    def show_processing_message(self):
-        """Displays a 'Processing...' message on the LCD immediately."""
+    def show_processing_message(self, progress=None):
+        """
+        Displays a 'Processing...' message on the LCD with optional progress.
+        Args:
+            progress: Float between 0 and 1 indicating progress, or None
+        """
         if not self.lcd_available or not self.disp:
-            return # Don't try if LCD isn't working
-            
+            return
+        
         try:
-            logging.info("Displaying Processing message...")
-            processing_img = create_status_image(self.width, self.height, "Processing...")
-            # Consider rotating if necessary based on physical orientation vs library rotation
-            # processing_img = processing_img.rotate(180)
+            logging.info(f"Displaying Processing message... Progress: {progress:.1%}" if progress is not None else "Displaying Processing message...")
+            processing_img = create_status_image(
+                self.width, 
+                self.height, 
+                "Processing...", 
+                progress=progress,
+                rotate=True
+            )
             self.disp.ShowImage(processing_img)
         except Exception as e:
             logging.error(f"Error displaying processing message: {e}")

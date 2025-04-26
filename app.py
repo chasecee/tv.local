@@ -170,37 +170,72 @@ def convert_to_frames(video_path, output_folder):
     # Ensure output folder exists after clearing (it might have been deleted if empty)
     os.makedirs(output_folder, exist_ok=True)
 
-    # FFmpeg command: scale to 320x240, 12 FPS, output PNG frames
-    # Consider adding -vf "scale=320:240:force_original_aspect_ratio=decrease,pad=320:240:(ow-iw)/2:(oh-ih)/2"
-    # if maintaining aspect ratio with padding is desired.
+    # First, get total frame count
+    try:
+        ffprobe_cmd = [
+            'ffprobe',
+            '-v', 'error',
+            '-select_streams', 'v:0',
+            '-count_packets',
+            '-show_entries', 'stream=nb_read_packets',
+            '-of', 'csv=p=0',
+            video_path
+        ]
+        total_frames = int(subprocess.check_output(ffprobe_cmd).decode().strip())
+        logging.info(f"Total frames to convert: {total_frames}")
+    except Exception as e:
+        logging.error(f"Error getting frame count: {e}")
+        total_frames = None
+
+    # FFmpeg command with progress pipe
     ffmpeg_cmd = [
         'ffmpeg',
         '-i', video_path,
-        '-vf', 'scale=320:240', # Pre-scale frames
-        '-r', '12',              # Output 12 FPS (Changed from 15)
-        '-pix_fmt', 'rgb565le',  # Set pixel format to 16-bit RGB
-        os.path.join(output_folder, 'frame_%04d.png') # Naming convention
+        '-vf', 'scale=320:240',
+        '-r', '12',
+        '-pix_fmt', 'rgb565le',
+        '-progress', 'pipe:1',  # Output progress to pipe
+        os.path.join(output_folder, 'frame_%04d.png')
     ]
 
     try:
         logging.info(f"Running FFmpeg: {' '.join(ffmpeg_cmd)}")
-        result = subprocess.run(ffmpeg_cmd, check=True, capture_output=True, text=True)
-        # Don't log potentially huge stdout/stderr unless debugging level is set
-        logging.debug("FFmpeg stdout:", result.stdout)
-        logging.debug("FFmpeg stderr:", result.stderr)
-        logging.info("Frame conversion successful.")
-        # Write marker on successful conversion
-        source_filename = os.path.basename(video_path)
-        write_video_marker(source_filename)
-        return True # Indicate success
-    except FileNotFoundError:
-        logging.error("Error: ffmpeg command not found. Please ensure FFmpeg is installed and in PATH.")
-        # TODO: Provide feedback to the user via the web UI
-        return False
-    except subprocess.CalledProcessError as e:
+        process = subprocess.Popen(
+            ffmpeg_cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            universal_newlines=True
+        )
+
+        frame_count = 0
+        while True:
+            line = process.stdout.readline()
+            if not line and process.poll() is not None:
+                break
+            
+            if 'frame=' in line:
+                frame_count = int(line.split('frame=')[1].strip())
+                if total_frames:
+                    progress = frame_count / total_frames
+                    player.show_processing_message(progress)
+                else:
+                    # If we couldn't get total frames, show indeterminate progress
+                    player.show_processing_message(None)
+
+        # Check final status
+        if process.returncode == 0:
+            logging.info("Frame conversion successful.")
+            # Write marker on successful conversion
+            source_filename = os.path.basename(video_path)
+            write_video_marker(source_filename)
+            return True
+        else:
+            error_output = process.stderr.read()
+            logging.error(f"FFmpeg error: {error_output}")
+            return False
+
+    except Exception as e:
         logging.error(f"Error during frame conversion: {e}")
-        logging.error("FFmpeg stderr:", e.stderr)
-        # TODO: Provide feedback to the user via the web UI
         return False
 
 

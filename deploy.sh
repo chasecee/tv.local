@@ -34,7 +34,7 @@ if [ ! -f /etc/systemd/system/tv.local.service ]; then
 fi
 
 echo "Stopping service..."
-sudo systemctl stop tv.local || true  # Don't fail if service doesn't exist
+sudo systemctl stop tv.local || true
 
 echo "Setting up application..."
 # Create necessary directories if they don't exist
@@ -47,14 +47,14 @@ sudo cp dist/tvlocal /home/pi/tv.local/
 sudo chmod +x /home/pi/tv.local/tvlocal
 
 echo "Starting service..."
-sudo systemctl enable tv.local || true  # Enable service to start on boot
-sudo systemctl start tv.local || true
+sudo systemctl enable tv.local || true
+sudo systemctl start tv.local
 
 echo "Deployment complete! 🎉"
 
 # Show service status
 echo "Service status:"
-sudo systemctl status tv.local || true
+systemctl status tv.local --no-pager
 
 # Check for FFmpeg
 if ! command -v ffmpeg &> /dev/null; then
