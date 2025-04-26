@@ -27,4 +27,28 @@ sudo chmod +x /home/pi/tv.local/tvlocal
 echo "Starting service..."
 sudo systemctl start tv.local
 
-echo "Deployment complete!" 
+echo "Deployment complete!"
+
+# Create necessary directories
+mkdir -p uploads frames static
+
+# Check for FFmpeg
+if ! command -v ffmpeg &> /dev/null; then
+    echo "FFmpeg not found. Installing..."
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        brew install ffmpeg
+    elif [[ -f /etc/debian_version ]]; then
+        sudo apt-get update
+        sudo apt-get install -y ffmpeg
+    else
+        echo "Error: Unsupported system. Please install FFmpeg manually."
+        exit 1
+    fi
+fi
+
+# Set permissions
+chmod +x tv-local
+
+# Start the application
+echo "Starting TV Local application..."
+./tv-local 
