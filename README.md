@@ -99,7 +99,8 @@ For improved reliability, especially in environments with frequent power loss, y
 
    This will:
 
-   - Install/update required apt packages (python3-flask, python3-pil, python3-pyinstaller, etc.)
+   - Install/update required apt packages (python3-flask, python3-pil, etc.)
+   - Install PyInstaller via pip (not available in Raspbian repos)
    - Pull latest code
    - Build a fresh binary
    - Stop the service
@@ -108,7 +109,7 @@ For improved reliability, especially in environments with frequent power loss, y
 
    The binary deployment is more resilient to power loss and filesystem corruption as it doesn't rely on .pyc files or a complete Python environment.
 
-   Note: All Python dependencies are managed through apt for maximum system stability.
+   Note: Most Python dependencies are managed through apt, with PyInstaller being the only pip-installed exception due to Raspbian packaging limitations.
 
 Troubleshooting:
 

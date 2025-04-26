@@ -1,9 +1,12 @@
 #!/bin/bash
 set -e
 
-echo "Installing/updating dependencies..."
+echo "Installing/updating system dependencies..."
 sudo apt update
-sudo apt install -y python3-pip python3-dev python3-flask python3-pil python3-numpy python3-pyinstaller ffmpeg
+sudo apt install -y python3-pip python3-dev python3-flask python3-pil python3-numpy ffmpeg
+
+echo "Installing PyInstaller (via pip)..."
+sudo pip3 install --no-cache-dir pyinstaller
 
 echo "Pulling latest code..."
 git pull
