@@ -26,21 +26,35 @@ else
     ~/.local/bin/pyinstaller --onefile --name tvlocal app.py
 fi
 
+# Install systemd service if it doesn't exist
+if [ ! -f /etc/systemd/system/tv.local.service ]; then
+    echo "Installing systemd service..."
+    sudo cp tvplayer.service /etc/systemd/system/tv.local.service
+    sudo systemctl daemon-reload
+fi
+
 echo "Stopping service..."
 sudo systemctl stop tv.local || true  # Don't fail if service doesn't exist
 
-echo "Replacing old binary..."
-sudo cp dist/tvlocal /home/pi/tv.local/tvlocal
-sudo chmod +x /home/pi/tv.local/tvlocal
-
+echo "Setting up application..."
 # Create necessary directories if they don't exist
-sudo mkdir -p /home/pi/tv.local/uploads /home/pi/tv.local/frames /home/pi/tv.local/static
+sudo mkdir -p /home/pi/tv.local/{uploads,frames,static}
 sudo chown -R pi:pi /home/pi/tv.local/
 
+# Copy the binary and set permissions
+echo "Installing new binary..."
+sudo cp dist/tvlocal /home/pi/tv.local/
+sudo chmod +x /home/pi/tv.local/tvlocal
+
 echo "Starting service..."
-sudo systemctl start tv.local || true  # Don't fail if service doesn't exist
+sudo systemctl enable tv.local || true  # Enable service to start on boot
+sudo systemctl start tv.local || true
 
 echo "Deployment complete! 🎉"
+
+# Show service status
+echo "Service status:"
+sudo systemctl status tv.local || true
 
 # Check for FFmpeg
 if ! command -v ffmpeg &> /dev/null; then

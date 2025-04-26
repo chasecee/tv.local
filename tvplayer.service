@@ -3,16 +3,15 @@ Description=Mini TV Player Service
 After=network.target
 
 [Service]
-# Set the working directory to the project root.
-# IMPORTANT: Replace /home/pi/tv.local with the actual absolute path
-#            to where you cloned this project directory on your Pi.
-WorkingDirectory=/home/pi/tv.local 
+# Set the working directory to the project root
+WorkingDirectory=/home/pi/tv.local
 
-# Command to execute the Python application.
-# IMPORTANT: Ensure the path to the system python3 and app.py are correct.
-#            Use the full path to the python executable, often found via `which python3`.
-#            Example assumes project cloned to /home/pi/tv.local
-ExecStart=/usr/bin/python3 /home/pi/tv.local/app.py
+# Run the compiled binary instead of Python script
+ExecStart=/home/pi/tv.local/tvlocal
+
+# Run as pi user (important for file permissions)
+User=pi
+Group=pi
 
 # Restart the service if it fails
 Restart=on-failure
