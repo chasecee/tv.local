@@ -3,13 +3,11 @@ set -e
 
 echo "Installing/updating system dependencies..."
 sudo apt update
-sudo apt install -y python3-pip python3-dev python3-flask python3-pil python3-numpy ffmpeg python3-pipx
+sudo apt install -y python3-pip python3-dev python3-flask python3-pil python3-numpy ffmpeg
 
-echo "Installing PyInstaller using pipx..."
-# Remove old PyInstaller if it exists
-pipx uninstall pyinstaller || true
-# Install fresh PyInstaller
-pipx install pyinstaller
+echo "Installing PyInstaller directly..."
+# Since this is a dedicated Pi, we'll use --break-system-packages
+python3 -m pip install --break-system-packages pyinstaller
 
 echo "Pulling latest code..."
 git pull
@@ -18,8 +16,7 @@ echo "Cleaning old build..."
 rm -rf dist/ build/ tvlocal.spec
 
 echo "Building fresh binary..."
-# Use pipx run to execute PyInstaller in isolated environment
-pipx run pyinstaller --onefile --name tvlocal main.py
+pyinstaller --onefile --name tvlocal main.py
 
 echo "Stopping service..."
 sudo systemctl stop tv.local || true  # Don't fail if service doesn't exist
