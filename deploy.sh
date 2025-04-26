@@ -21,9 +21,9 @@ rm -rf dist/ build/ tvlocal.spec
 echo "Building fresh binary..."
 # Use full path to pyinstaller if PATH update doesn't take effect
 if command -v pyinstaller &> /dev/null; then
-    pyinstaller --onefile --name tvlocal main.py
+    pyinstaller --onefile --name tvlocal app.py
 else
-    ~/.local/bin/pyinstaller --onefile --name tvlocal main.py
+    ~/.local/bin/pyinstaller --onefile --name tvlocal app.py
 fi
 
 echo "Stopping service..."
