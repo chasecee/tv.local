@@ -29,7 +29,7 @@ def create_status_image(width, height, message, progress=None, rotate=True):
         height: Image height
         message: Text to display
         progress: Float between 0 and 1 for progress bar, or None for no bar
-        rotate: Whether to rotate the image 90 degrees clockwise
+        rotate: Whether to rotate the image -90 degrees (counterclockwise)
     """
     # Create image in landscape first, we'll rotate later
     img = Image.new('RGB', (height if rotate else width, width if rotate else height), "BLACK")
@@ -89,7 +89,7 @@ def create_status_image(width, height, message, progress=None, rotate=True):
 
     # Rotate if requested
     if rotate:
-        img = img.rotate(90, expand=True)  # 90 degrees clockwise
+        img = img.rotate(-90, expand=True)  # -90 degrees (counterclockwise)
     
     return img
 
