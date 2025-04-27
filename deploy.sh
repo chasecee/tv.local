@@ -92,7 +92,7 @@ if [ ! -f "tvlocal.spec" ]; then
         --hidden-import display \
         --noconfirm \
         --clean \
-        --strip \
+        --log-level DEBUG \
         --exclude-module matplotlib \
         --exclude-module tkinter \
         --exclude-module PyQt5 \
