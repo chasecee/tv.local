@@ -153,20 +153,6 @@ deploy() {
 
     if [ "$MODE" = "web" ]; then
         echo "Building web mode binary..."
-        # Copy LCD library to web directory for bundling
-        echo "Copying LCD library for bundling..."
-        cp -r lib web/
-        
-        # Set up PyInstaller optimizations
-        echo "Setting up PyInstaller optimizations..."
-        export PYINSTALLER_CACHE_DIR=~/.cache/pyinstaller
-        export PYTHONDONTWRITEBYTECODE=0
-        export PYINSTALLER_PARALLEL=4
-        
-        # Create cache directory if it doesn't exist
-        mkdir -p "$PYINSTALLER_CACHE_DIR"
-        
-        echo "Running PyInstaller for web mode..."
         # Copy fonts for bundling
         echo "Copying fonts for bundling..."
         mkdir -p web/fonts
@@ -176,10 +162,20 @@ deploy() {
         echo "Installing Python dependencies..."
         pip3 install -r requirements.txt
         
+        # Copy lib files to web directory
+        echo "Copying lib files to web directory..."
+        mkdir -p web/lib
+        cp lib/*.py web/lib/
+        
+        # Copy lib files to headless directory
+        echo "Copying lib files to headless directory..."
+        mkdir -p headless/lib
+        cp lib/*.py headless/lib/
+        
         pyinstaller --onefile \
             --noconfirm \
             --add-data "web/lib:LIB" \
-            --add-data "display.py:." \
+            --add-data "web/display.py:." \
             --add-data "web/fonts:fonts" \
             --hidden-import lib.LCD_2inch \
             --hidden-import lib.lcdconfig \
@@ -203,26 +199,38 @@ deploy() {
         TARGET_DIR="/home/pi/tv.local/web"
     else
         echo "Building headless mode binary..."
-        # Copy LCD library to headless directory for bundling
-        echo "Copying LCD library for bundling..."
-        cp -r lib headless/
+        # Copy fonts for bundling
+        echo "Copying fonts for bundling..."
+        mkdir -p web/fonts
+        cp -r python/Font/* web/fonts/
         
-        # Set up PyInstaller optimizations
-        echo "Setting up PyInstaller optimizations..."
-        export PYINSTALLER_CACHE_DIR=~/.cache/pyinstaller
-        export PYTHONDONTWRITEBYTECODE=0
-        export PYINSTALLER_PARALLEL=4
+        # Install Python dependencies
+        echo "Installing Python dependencies..."
+        pip3 install -r requirements.txt
         
-        # Create cache directory if it doesn't exist
-        mkdir -p "$PYINSTALLER_CACHE_DIR"
+        # Copy lib files to web directory
+        echo "Copying lib files to web directory..."
+        mkdir -p web/lib
+        cp lib/*.py web/lib/
         
-        echo "Running PyInstaller for headless mode..."
+        # Copy lib files to headless directory
+        echo "Copying lib files to headless directory..."
+        mkdir -p headless/lib
+        cp lib/*.py headless/lib/
+        
         pyinstaller --onefile \
             --noconfirm \
-            --add-data "headless/lib:LIB" \
+            --add-data "web/lib:LIB" \
+            --add-data "web/display.py:." \
+            --add-data "web/fonts:fonts" \
             --hidden-import lib.LCD_2inch \
             --hidden-import lib.lcdconfig \
-            --name tvheadless headless/main.py
+            --hidden-import display \
+            --hidden-import PIL \
+            --hidden-import PIL.Image \
+            --hidden-import PIL.ImageDraw \
+            --hidden-import PIL.ImageFont \
+            --name tvheadless web/main.py
             
         # Verify binary was built
         if [ ! -f "dist/tvheadless" ]; then

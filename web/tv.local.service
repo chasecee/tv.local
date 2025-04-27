@@ -1,0 +1,25 @@
+[Unit]
+Description=Mini TV Player Service
+After=network.target
+
+[Service]
+# Set the working directory to the project root
+WorkingDirectory=/home/pi/tv.local/web
+
+# Run the compiled binary with port 8080
+ExecStart=/home/pi/tv.local/web/tvlocal --port 8080
+
+# Run as pi user
+User=pi
+Group=pi
+
+# Restart settings
+Restart=always
+RestartSec=10
+
+# Standard output and error logging
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
