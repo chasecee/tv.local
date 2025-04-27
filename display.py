@@ -107,6 +107,10 @@ class DisplayPlayer:
         self.height = 240 # Default height
 
         logging.info(f"DisplayPlayer initialized with frame rate: {self.fps} FPS (frame delay: {self.frame_delay:.3f}s)")
+        if fps is not None:
+            logging.info(f"Using explicitly provided FPS: {fps}")
+        else:
+            logging.info(f"Using FPS from app config: {app.config.get('FRAME_RATE', 12)}")
 
         if HAS_LCD:
             try:
