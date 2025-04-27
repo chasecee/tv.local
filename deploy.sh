@@ -170,8 +170,10 @@ deploy() {
         pyinstaller --onefile \
             --noconfirm \
             --add-data "web/lib:LIB" \
+            --add-data "display.py:." \
             --hidden-import lib.LCD_2inch \
             --hidden-import lib.lcdconfig \
+            --hidden-import display \
             --name tvlocal web/app.py
             
         # Verify binary was built
