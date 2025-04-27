@@ -1,5 +1,5 @@
 [Unit]
-Description=Mini TV Player Service
+Description=Mini TV Player Headless Service
 After=network.target
 
 [Service]
@@ -7,15 +7,11 @@ After=network.target
 WorkingDirectory=/home/pi/tv.local
 
 # Run the compiled binary instead of Python script
-ExecStart=/home/pi/tv.local/web/tvlocal
+ExecStart=/home/pi/tv.local/headless/tvheadless
 
-# Run as pi user
-User=pi
-Group=pi
-
-# Restart settings
-Restart=always
-RestartSec=10
+# Restart the service if it fails
+Restart=on-failure
+RestartSec=5s
 
 # Standard output and error logging
 StandardOutput=journal

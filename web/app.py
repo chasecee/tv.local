@@ -18,9 +18,9 @@ app.secret_key = os.urandom(24)
 UPLOAD_FOLDER = 'uploads'
 FRAMES_FOLDER = 'frames'
 STATIC_FOLDER = 'static'
-LAST_VIDEO_FILE = '.last_video' # File to store the last played video filename
-DEFAULT_VIDEO_FILE = '.default_video' # File to store the *chosen* default video
-VIDEO_MARKER_FILE = os.path.join(FRAMES_FOLDER, '.video_marker') # Marker for existing frames
+LAST_VIDEO_FILE = os.path.join('uploads', '.last_video') # File to store the last played video filename
+DEFAULT_VIDEO_FILE = os.path.join('uploads', '.default_video') # File to store the *chosen* default video
+VIDEO_MARKER_FILE = os.path.join('frames', '.video_marker') # Marker for existing frames
 ALLOWED_EXTENSIONS = {'mp4'}
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER

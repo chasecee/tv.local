@@ -13,11 +13,17 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 # Import Waveshare library
 try:
+    # First try to import from compiled binary location
+    if getattr(sys, 'frozen', False):
+        # Running in a PyInstaller bundle
+        lib_path = os.path.join(sys._MEIPASS, 'LIB')
+        sys.path.insert(0, lib_path)
+    
     from lib import LCD_2inch
     HAS_LCD = True
     logging.info("Waveshare LCD library imported.")
-except ImportError:
-    logging.warning("Waveshare library (lib/LCD_2inch.py) not found. LCD output disabled.")
+except ImportError as e:
+    logging.warning(f"Waveshare library (lib/LCD_2inch.py) not found: {e}")
     HAS_LCD = False
 
 # Helper function to create a status message image

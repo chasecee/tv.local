@@ -1,12 +1,15 @@
 # Mini TV Player
 
-A self-contained video player for Raspberry Pi that displays looping video content on a 2" LCD screen. Features a web UI for video management and compiles to a single binary for maximum reliability.
+A self-contained video player for Raspberry Pi that displays looping video content on a 2" LCD screen. Available in two deployment modes:
+
+- Web UI mode: Full web interface for video management
+- Headless mode: Simple, lightweight deployment for basic playback
 
 ## Features
 
 - 🎥 Video playback on 2" SPI LCD (320x240)
-- 🌐 Web UI at `http://tv.local`
-- 📤 Upload and manage MP4 files
+- 🌐 Web UI at `http://tv.local` (web mode only)
+- 📤 Upload and manage MP4 files (web mode only)
 - 🔄 Automatic video-to-frames conversion
 - 🚀 Single-binary deployment
 - 🔌 Power-loss resistant
@@ -33,42 +36,34 @@ A self-contained video player for Raspberry Pi that displays looping video conte
    ```bash
    git clone https://github.com/chasecee/tv.local.git
    cd tv.local
+
+   # For web mode (default):
    ./deploy.sh
+
+   # For headless mode:
+   ./deploy.sh --headless
    ```
 
 4. **Access**
-   - Open `http://tv.local` or `http://<PI_IP_ADDRESS>`
-   - Upload an MP4 file
-   - Watch it play!
-
-## Binary Deployment Details
-
-The project uses PyInstaller to create a single binary that includes:
-
-- Flask web server
-- PIL for image processing
-- All Python dependencies
-- Static files and templates
-
-Benefits:
-
-- ✨ No Python environment needed
-- 🛡️ Resistant to filesystem corruption
-- 🚀 Fast startup
-- 🔒 Reliable operation
+   - Web mode: Open `http://tv.local` or `http://<PI_IP_ADDRESS>`
+   - Headless mode: Place videos in the `headless/videos` directory
 
 ## Project Structure
 
 ```
 tv.local/
-├── app.py              # Main application
-├── display.py          # LCD display handler
+├── web/                 # Web UI deployment
+│   ├── app.py          # Main web application
+│   ├── static/         # Web UI assets
+│   ├── templates/      # Flask templates
+│   ├── uploads/        # Video storage
+│   └── frames/         # Converted frames
+├── headless/           # Headless deployment
+│   ├── main.py         # Headless player
+│   └── videos/         # Video storage
+├── display.py          # Shared LCD display handler
 ├── deploy.sh           # Deployment script
 ├── tv.local.service    # Systemd service for web interface
-├── static/             # Web UI assets
-├── templates/          # Flask templates
-├── uploads/            # Video storage
-├── frames/             # Converted frames
 └── lib/                # LCD driver
 ```
 
@@ -87,12 +82,21 @@ If you want to modify the code:
 2. **Run in Dev Mode**
 
    ```bash
-   python app.py
+   # Web mode:
+   python web/app.py
+
+   # Headless mode:
+   python headless/main.py
    ```
 
 3. **Build Binary**
+
    ```bash
+   # Web mode:
    ./deploy.sh
+
+   # Headless mode:
+   ./deploy.sh --headless
    ```
 
 ## Troubleshooting

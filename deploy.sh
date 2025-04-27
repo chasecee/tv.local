@@ -1,28 +1,59 @@
 #!/bin/bash
 set -e
 
+# Default to web mode
+MODE="web"
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --headless)
+            MODE="headless"
+            shift
+            ;;
+        *)
+            echo "Unknown option: $1"
+            exit 1
+            ;;
+    esac
+done
+
 # Function to check internet connectivity
 check_internet() {
-    # Try to reach a reliable server (Cloudflare DNS)
     if ping -c 1 1.1.1.1 >/dev/null 2>&1; then
-        return 0  # Internet available
+        return 0
     else
-        return 1  # No internet
+        return 1
     fi
 }
 
-# Function to check if headless version is running
-check_headless_service() {
-    if systemctl is-active --quiet tv.headless; then
-        echo "WARNING: Headless version (tv.headless) is running."
-        read -p "Do you want to stop the headless version and continue? (y/n) " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            sudo systemctl stop tv.headless
-            return 0
-        else
-            echo "Installation aborted."
-            exit 1
+# Function to check if other version is running
+check_other_service() {
+    if [ "$MODE" = "web" ]; then
+        if systemctl is-active --quiet tv.headless; then
+            echo "WARNING: Headless version (tv.headless) is running."
+            read -p "Do you want to stop the headless version and continue? (y/n) " -n 1 -r
+            echo
+            if [[ $REPLY =~ ^[Yy]$ ]]; then
+                sudo systemctl stop tv.headless
+                return 0
+            else
+                echo "Installation aborted."
+                exit 1
+            fi
+        fi
+    else
+        if systemctl is-active --quiet tv.local; then
+            echo "WARNING: Web version (tv.local) is running."
+            read -p "Do you want to stop the web version and continue? (y/n) " -n 1 -r
+            echo
+            if [[ $REPLY =~ ^[Yy]$ ]]; then
+                sudo systemctl stop tv.local
+                return 0
+            else
+                echo "Installation aborted."
+                exit 1
+            fi
         fi
     fi
     return 0
@@ -33,14 +64,14 @@ install_dependencies() {
     if check_internet; then
         echo "Internet available, updating system packages..."
         sudo apt update
-        sudo apt install -y python3-pip python3-dev python3-flask python3-pil python3-numpy ffmpeg
+        # Install packages in parallel
+        sudo apt install -y python3-pip python3-dev python3-flask python3-pil python3-numpy ffmpeg &
+        PID1=$!
+        wait $PID1
     else
         echo "No internet connection. Checking if required packages are installed..."
-        # Check for critical packages
         if ! command -v python3 >/dev/null || ! command -v ffmpeg >/dev/null; then
             echo "ERROR: Critical packages (python3, ffmpeg) missing and no internet to install them."
-            echo "Please connect to internet or install packages manually:"
-            echo "sudo apt install python3-pip python3-dev python3-flask python3-pil python3-numpy ffmpeg"
             exit 1
         fi
         echo "Required packages found, proceeding with offline deployment..."
@@ -55,120 +86,114 @@ install_pyinstaller() {
             sudo pip3 install --break-system-packages pyinstaller
         else
             echo "ERROR: PyInstaller not found and no internet to install it."
-            echo "Please connect to internet or install PyInstaller manually:"
-            echo "sudo pip3 install --break-system-packages pyinstaller"
             exit 1
         fi
-    else
-        echo "PyInstaller already installed, proceeding..."
     fi
 }
 
-# Check if headless version is running
-check_headless_service
+# Main deployment function
+deploy() {
+    # Check if other version is running
+    check_other_service
 
-# Install dependencies
-install_dependencies
+    # Install dependencies and PyInstaller in parallel
+    install_dependencies &
+    PID1=$!
+    install_pyinstaller &
+    PID2=$!
+    wait $PID1 $PID2
 
-# Install PyInstaller
-install_pyinstaller
+    # Add local bin to PATH
+    export PATH="$HOME/.local/bin:$PATH"
 
-# Add local bin to PATH for this session
-export PATH="$HOME/.local/bin:$PATH"
-
-# Optional git pull
-if check_internet; then
-    echo "Pulling latest code..."
-    git pull || echo "Git pull failed, using existing code..."
-else
-    echo "No internet connection, using existing code..."
-fi
-
-echo "Cleaning old build..."
-rm -rf dist/ build/ tvlocal.spec
-
-echo "Building fresh binary..."
-if command -v pyinstaller &> /dev/null; then
-    pyinstaller --onefile --name tvlocal app.py
-else
-    ~/.local/bin/pyinstaller --onefile --name tvlocal app.py
-fi
-
-# Install systemd service if it doesn't exist
-if [ ! -f /etc/systemd/system/tv.local.service ]; then
-    echo "Installing systemd service..."
-    sudo cp tv.local.service /etc/systemd/system/tv.local.service
-    sudo systemctl daemon-reload
-fi
-
-echo "Stopping service..."
-sudo systemctl stop tv.local || true
-
-echo "Setting up application..."
-# Create necessary directories if they don't exist
-sudo mkdir -p /home/pi/tv.local/{uploads,frames,static}
-sudo chown -R pi:pi /home/pi/tv.local/
-
-# Copy the binary and set permissions
-echo "Installing new binary..."
-sudo cp dist/tvlocal /home/pi/tv.local/
-sudo chmod +x /home/pi/tv.local/tvlocal
-
-# Copy static assets and templates if they exist
-if [ -d "static" ]; then
-    echo "Copying static assets..."
-    src_dir="$(pwd)/static"
-    dest_dir="/home/pi/tv.local/static"
-    
-    if [ "$src_dir" != "$dest_dir" ]; then
-        # Remove old static files first
-        sudo rm -rf "$dest_dir"
-        sudo cp -r "$src_dir" "/home/pi/tv.local/"
-        echo "Static assets updated."
-    else
-        echo "Source and destination are the same, skipping static assets copy."
+    # Optional git pull if internet is available
+    if check_internet; then
+        echo "Pulling latest code..."
+        git pull || echo "Git pull failed, using existing code..."
     fi
-fi
-if [ -d "templates" ]; then
-    echo "Copying templates..."
-    # Get absolute paths to avoid self-copying
-    src_dir="$(pwd)/templates"
-    dest_dir="/home/pi/tv.local/templates"
-    
-    # Only copy if source and destination are different
-    if [ "$src_dir" != "$dest_dir" ]; then
-        # Remove old templates first to ensure clean state
-        sudo rm -rf "$dest_dir"
-        sudo cp -r "$src_dir" "/home/pi/tv.local/"
-        echo "Templates updated."
+
+    # Clean and build
+    echo "Cleaning old build..."
+    rm -rf dist/ build/ tvlocal.spec
+
+    if [ "$MODE" = "web" ]; then
+        echo "Building web mode binary..."
+        pyinstaller --onefile \
+            --add-data "lib:LIB" \
+            --hidden-import lib.LCD_2inch \
+            --hidden-import lib.lcdconfig \
+            --name tvlocal web/app.py
+        SERVICE_NAME="tv.local"
+        TARGET_DIR="/home/pi/tv.local/web"
     else
-        echo "Source and destination are the same, skipping template copy."
+        echo "Building headless mode binary..."
+        pyinstaller --onefile \
+            --add-data "lib:LIB" \
+            --hidden-import lib.LCD_2inch \
+            --hidden-import lib.lcdconfig \
+            --name tvheadless headless/main.py
+        SERVICE_NAME="tv.headless"
+        TARGET_DIR="/home/pi/tv.local/headless"
     fi
-fi
-if [ -d "lib" ]; then
-    echo "Copying LCD library..."
-    src_dir="$(pwd)/lib"
-    dest_dir="/home/pi/tv.local/lib"
-    
-    if [ "$src_dir" != "$dest_dir" ]; then
-        # Remove old lib files first
-        sudo rm -rf "$dest_dir"
-        sudo cp -r "$src_dir" "/home/pi/tv.local/"
-        echo "LCD library updated."
+
+    # Setup service
+    if [ ! -f "/etc/systemd/system/$SERVICE_NAME.service" ]; then
+        echo "Installing systemd service..."
+        sudo cp "$SERVICE_NAME.service" "/etc/systemd/system/$SERVICE_NAME.service"
+        sudo systemctl daemon-reload
+    fi
+
+    # Stop service if running
+    echo "Stopping service..."
+    sudo systemctl stop "$SERVICE_NAME" || true
+
+    # Setup directories
+    echo "Setting up application..."
+    if [ "$MODE" = "web" ]; then
+        sudo mkdir -p "$TARGET_DIR/{uploads,frames,static}"
     else
-        echo "Source and destination are the same, skipping LCD library copy."
+        sudo mkdir -p "$TARGET_DIR/videos"
     fi
-fi
+    sudo chown -R pi:pi /home/pi/tv.local/
 
-echo "Starting service..."
-sudo systemctl enable tv.local || true
-sudo systemctl start tv.local
+    # Install binary
+    echo "Installing new binary..."
+    if [ "$MODE" = "web" ]; then
+        sudo cp dist/tvlocal "$TARGET_DIR/"
+        sudo chmod +x "$TARGET_DIR/tvlocal"
+    else
+        sudo cp dist/tvheadless "$TARGET_DIR/"
+        sudo chmod +x "$TARGET_DIR/tvheadless"
+    fi
 
-echo "Deployment complete! 🎉"
+    # Copy assets in parallel if they exist
+    if [ "$MODE" = "web" ]; then
+        if [ -d "web/static" ]; then
+            echo "Copying static assets..."
+            sudo rsync -a --delete web/static/ "$TARGET_DIR/static/" &
+        fi
+        if [ -d "web/templates" ]; then
+            echo "Copying templates..."
+            sudo rsync -a --delete web/templates/ "$TARGET_DIR/templates/" &
+        fi
+    fi
+    if [ -d "lib" ]; then
+        echo "Copying LCD library..."
+        sudo rsync -a --delete lib/ "$TARGET_DIR/lib/" &
+    fi
+    wait
 
-# Show service status
-echo "Service status:"
-systemctl status tv.local --no-pager
+    # Start service
+    echo "Starting service..."
+    sudo systemctl enable "$SERVICE_NAME" || true
+    sudo systemctl start "$SERVICE_NAME"
+
+    echo "Deployment complete! 🎉"
+    systemctl status "$SERVICE_NAME" --no-pager
+}
+
+# Run deployment
+deploy
 
 # Check for FFmpeg
 if ! command -v ffmpeg &> /dev/null; then
