@@ -6,8 +6,8 @@ After=network.target
 # Set the working directory to the project root
 WorkingDirectory=/home/pi/tv.local
 
-# Run the compiled binary
-ExecStart=/home/pi/tv.local/web/tvlocal
+# Run the compiled binary with port 8080
+ExecStart=/home/pi/tv.local/web/tvlocal --port 8080
 
 # Run as pi user
 User=pi

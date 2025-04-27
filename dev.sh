@@ -50,10 +50,24 @@ check_other_service() {
     return 0
 }
 
+# Function to setup virtual environment
+setup_venv() {
+    if [ ! -d "venv" ]; then
+        echo "Creating virtual environment..."
+        python3 -m venv venv
+    fi
+    
+    echo "Activating virtual environment..."
+    source venv/bin/activate
+    
+    echo "Upgrading pip..."
+    pip install --upgrade pip
+}
+
 # Function to install dependencies
 install_dependencies() {
     echo "Installing Python dependencies..."
-    pip3 install -r requirements.txt
+    pip install -r requirements.txt
 }
 
 # Function to setup directories
@@ -71,6 +85,9 @@ run_dev() {
     # Check if other version is running
     check_other_service
 
+    # Setup virtual environment
+    setup_venv
+
     # Install dependencies
     install_dependencies
 
@@ -79,12 +96,11 @@ run_dev() {
 
     # Run the appropriate mode
     if [ "$MODE" = "web" ]; then
-        echo "Starting web development server..."
-        # Use sudo for port 80, or remove sudo to use a different port
-        sudo python3 web/app.py
+        echo "Starting web development server on port 8080..."
+        venv/bin/python web/app.py --port 8080
     else
         echo "Starting headless development server..."
-        python3 headless/main.py
+        venv/bin/python headless/main.py
     fi
 }
 

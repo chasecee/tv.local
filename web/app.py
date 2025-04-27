@@ -6,6 +6,7 @@ import shutil # Added for disk usage and frame clearing
 from display import DisplayPlayer # Import DisplayPlayer
 import logging # Added for better logging
 import time # For checking modification times (optional optimization)
+import argparse
 
 # Configure basic logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -407,6 +408,10 @@ def delete_video(filename):
 # --- End Delete Route ---
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--port', type=int, default=80, help='Port to run the server on')
+    args = parser.parse_args()
+
     # --- Load video on startup (Default > Last > None) ---
     video_to_load = None
     video_load_source = "None"
@@ -485,5 +490,5 @@ if __name__ == '__main__':
 
     # Start the display player thread AFTER potentially loading frames
     player.start()
-    logging.info("Starting Flask server on port 80...")
-    app.run(host='0.0.0.0', port=80, debug=False, use_reloader=False) 
+    logging.info(f"Starting Flask server on port {args.port}...")
+    app.run(host='0.0.0.0', port=args.port, debug=False, use_reloader=False) 
