@@ -97,7 +97,15 @@ sudo chmod +x /home/pi/tv.local/tvlocal
 # Copy static assets and templates if they exist
 if [ -d "static" ]; then
     echo "Copying static assets..."
-    sudo cp -r static/* /home/pi/tv.local/static/
+    # Only copy if files are different or don't exist
+    for file in static/*; do
+        if [ -f "$file" ]; then
+            dest_file="/home/pi/tv.local/static/$(basename "$file")"
+            if [ ! -f "$dest_file" ] || ! cmp -s "$file" "$dest_file"; then
+                sudo cp "$file" "$dest_file"
+            fi
+        fi
+    done
 fi
 if [ -d "templates" ]; then
     echo "Copying templates..."
