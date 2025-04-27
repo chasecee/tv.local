@@ -1,5 +1,5 @@
 [Unit]
-Description=Mini TV Player Service
+Description=TV Local Service
 After=network.target
 
 [Service]

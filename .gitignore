@@ -24,7 +24,6 @@ wheels/
 
 # PyInstaller
 *.manifest
-*.spec
 
 # Project specific
 frames/

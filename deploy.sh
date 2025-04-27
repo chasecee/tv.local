@@ -68,11 +68,22 @@ echo "Cleaning old build..."
 rm -rf dist/ build/ tvlocal.spec
 
 echo "Building fresh binary..."
-if command -v pyinstaller &> /dev/null; then
-    pyinstaller --onefile --name tvlocal app.py
+# Generate spec file if it doesn't exist
+if [ ! -f "tvlocal.spec" ]; then
+    echo "Generating PyInstaller spec file..."
+    pyinstaller --name tvlocal --onefile --add-data "static:static" --add-data "templates:templates" --add-data "lib:lib" --add-data "web:web" --add-data "images:images" --hidden-import flask --hidden-import PIL --hidden-import numpy --hidden-import display app.py
 else
-    ~/.local/bin/pyinstaller --onefile --name tvlocal app.py
+    echo "Using existing spec file..."
+    pyinstaller tvlocal.spec
 fi
+
+# Verify the build was successful
+if [ ! -f "dist/tvlocal" ]; then
+    echo "ERROR: PyInstaller build failed!"
+    exit 1
+fi
+
+echo "Build successful! Binary size: $(du -h dist/tvlocal | cut -f1)"
 
 # Install systemd service if it doesn't exist
 if [ ! -f /etc/systemd/system/tv.local.service ]; then
@@ -110,11 +121,29 @@ if [ -d "static" ]; then
 fi
 if [ -d "templates" ]; then
     echo "Copying templates..."
-    sudo cp -r templates /home/pi/tv.local/
+    # Get absolute paths for comparison
+    SRC_DIR=$(realpath templates)
+    DST_DIR=$(realpath /home/pi/tv.local/templates)
+    
+    # Only copy if source and destination are different
+    if [ "$SRC_DIR" != "$DST_DIR" ]; then
+        sudo cp -r templates /home/pi/tv.local/
+    else
+        echo "Source and destination directories are the same, skipping templates copy."
+    fi
 fi
 if [ -d "lib" ]; then
     echo "Copying LCD library..."
-    sudo cp -r lib /home/pi/tv.local/
+    # Get absolute paths for comparison
+    SRC_DIR=$(realpath lib)
+    DST_DIR=$(realpath /home/pi/tv.local/lib)
+    
+    # Only copy if source and destination are different
+    if [ "$SRC_DIR" != "$DST_DIR" ]; then
+        sudo cp -r lib /home/pi/tv.local/
+    else
+        echo "Source and destination directories are the same, skipping lib copy."
+    fi
 fi
 
 echo "Starting service..."
