@@ -27,7 +27,9 @@ parser = argparse.ArgumentParser(description='TV Local Web Server')
 parser.add_argument('--port', type=int, default=8080, help='Port to run the server on')
 args = parser.parse_args()
 
-app = Flask(__name__)
+app = Flask(__name__,
+    template_folder=get_app_path('templates'),
+    static_folder=get_app_path('static'))
 # Secret key is needed for flashing messages
 # In a real app, use a proper secret key, not this placeholder
 app.secret_key = os.urandom(24) 
