@@ -185,8 +185,8 @@ if ! command -v ffmpeg &> /dev/null; then
 fi
 
 # Set permissions
-chmod +x tv-local
+chmod +x tvlocal
 
 # Start the application
 echo "Starting TV Local application..."
-./tv-local 
+./tvlocal 
