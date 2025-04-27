@@ -94,7 +94,6 @@ if [ ! -f "tvlocal.spec" ]; then
         --noconfirm \
         --clean \
         --strip \
-        --jobs 4 \
         --log-level DEBUG \
         --exclude-module matplotlib \
         --exclude-module tkinter \
