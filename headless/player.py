@@ -1,9 +1,17 @@
 #!/usr/bin/env python3
 import os
+import sys
 import time
 import logging
 import subprocess
 from pathlib import Path
+
+# Handle bundled modules when running as binary
+if getattr(sys, 'frozen', False):
+    # Running as compiled binary
+    bundle_dir = sys._MEIPASS
+    sys.path.append(bundle_dir)
+
 from display import DisplayPlayer
 
 # Configure logging

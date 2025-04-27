@@ -74,12 +74,17 @@ install_pyinstaller
 # Add local bin to PATH for this session
 export PATH="$HOME/.local/bin:$PATH"
 
+# Copy display.py to headless directory for bundling
+echo "Preparing dependencies for bundling..."
+cp ../display.py .
+
 echo "Building fresh binary..."
 rm -rf dist/ build/ tvheadless.spec
 if command -v pyinstaller &> /dev/null; then
-    pyinstaller --onefile --name tvheadless player.py
+    # Add the current directory to PYTHONPATH so PyInstaller finds display.py
+    PYTHONPATH=. pyinstaller --onefile --name tvheadless --add-data "display.py:." player.py
 else
-    ~/.local/bin/pyinstaller --onefile --name tvheadless player.py
+    PYTHONPATH=. ~/.local/bin/pyinstaller --onefile --name tvheadless --add-data "display.py:." player.py
 fi
 
 # Create directories
@@ -110,6 +115,11 @@ sudo systemctl daemon-reload
 echo "Starting service..."
 sudo systemctl enable tv.headless
 sudo systemctl start tv.headless
+
+# Cleanup
+echo "Cleaning up build files..."
+rm -f display.py
+rm -rf dist/ build/ tvheadless.spec
 
 echo "Headless deployment complete! 🎉"
 echo "To add videos, copy MP4 files to /home/pi/tv.headless/videos/"
