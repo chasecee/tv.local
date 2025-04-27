@@ -76,15 +76,15 @@ export PATH="$HOME/.local/bin:$PATH"
 
 # Copy display.py to headless directory for bundling
 echo "Preparing dependencies for bundling..."
-cp ../display.py .
+cp "$(dirname "$0")/../display.py" .
 
 echo "Building fresh binary..."
 rm -rf dist/ build/ tvheadless.spec
 if command -v pyinstaller &> /dev/null; then
     # Add the current directory to PYTHONPATH so PyInstaller finds display.py
-    PYTHONPATH=. pyinstaller --onefile --name tvheadless --add-data "display.py:." player.py
+    PYTHONPATH=. pyinstaller --onefile --name tvheadless --add-data "display.py:." main.py
 else
-    PYTHONPATH=. ~/.local/bin/pyinstaller --onefile --name tvheadless --add-data "display.py:." player.py
+    PYTHONPATH=. ~/.local/bin/pyinstaller --onefile --name tvheadless --add-data "display.py:." main.py
 fi
 
 # Create directories

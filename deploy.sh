@@ -95,7 +95,34 @@ install_pyinstaller() {
 setup_capabilities() {
     if [ "$MODE" = "web" ]; then
         echo "Setting up capabilities for port 80..."
-        sudo setcap 'cap_net_bind_service=+ep' "$TARGET_DIR/tvlocal"
+        if command -v setcap >/dev/null 2>&1; then
+            if sudo setcap 'cap_net_bind_service=+ep' "$TARGET_DIR/tvlocal"; then
+                echo "Successfully set capabilities for port 80"
+            else
+                echo "WARNING: Failed to set capabilities for port 80"
+                echo "You may need to run the service as root or use a different port"
+                read -p "Do you want to use port 8080 instead? (y/n) " -n 1 -r
+                echo
+                if [[ $REPLY =~ ^[Yy]$ ]]; then
+                    # Modify the service file to use port 8080
+                    sudo sed -i 's/--port 80/--port 8080/' "/etc/systemd/system/$SERVICE_NAME.service"
+                    sudo systemctl daemon-reload
+                else
+                    echo "Installation may fail without proper port access"
+                fi
+            fi
+        else
+            echo "WARNING: setcap command not found"
+            echo "You may need to run the service as root or use a different port"
+            read -p "Do you want to use port 8080 instead? (y/n) " -n 1 -r
+            echo
+            if [[ $REPLY =~ ^[Yy]$ ]]; then
+                sudo sed -i 's/--port 80/--port 8080/' "/etc/systemd/system/$SERVICE_NAME.service"
+                sudo systemctl daemon-reload
+            else
+                echo "Installation may fail without proper port access"
+            fi
+        fi
     fi
 }
 
@@ -126,8 +153,11 @@ deploy() {
 
     if [ "$MODE" = "web" ]; then
         echo "Building web mode binary..."
+        # Copy LCD library to web directory for bundling
+        echo "Copying LCD library for bundling..."
+        cp -r lib web/
         pyinstaller --onefile \
-            --add-data "lib:LIB" \
+            --add-data "web/lib:LIB" \
             --hidden-import lib.LCD_2inch \
             --hidden-import lib.lcdconfig \
             --name tvlocal web/app.py
@@ -135,8 +165,11 @@ deploy() {
         TARGET_DIR="/home/pi/tv.local/web"
     else
         echo "Building headless mode binary..."
+        # Copy LCD library to headless directory for bundling
+        echo "Copying LCD library for bundling..."
+        cp -r lib headless/
         pyinstaller --onefile \
-            --add-data "lib:LIB" \
+            --add-data "headless/lib:LIB" \
             --hidden-import lib.LCD_2inch \
             --hidden-import lib.lcdconfig \
             --name tvheadless headless/main.py
@@ -192,6 +225,15 @@ deploy() {
         sudo rsync -a --delete lib/ "$TARGET_DIR/lib/" &
     fi
     wait
+
+    # Cleanup
+    echo "Cleaning up build files..."
+    if [ "$MODE" = "web" ]; then
+        rm -rf web/lib
+    else
+        rm -rf headless/lib
+    fi
+    rm -rf dist/ build/ tvlocal.spec tvheadless.spec
 
     # Start service
     echo "Starting service..."

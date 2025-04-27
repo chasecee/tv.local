@@ -11,6 +11,11 @@ import argparse
 # Configure basic logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+# Parse command line arguments
+parser = argparse.ArgumentParser(description='TV Local Web Server')
+parser.add_argument('--port', type=int, default=8080, help='Port to run the server on')
+args = parser.parse_args()
+
 app = Flask(__name__)
 # Secret key is needed for flashing messages
 # In a real app, use a proper secret key, not this placeholder
@@ -408,10 +413,6 @@ def delete_video(filename):
 # --- End Delete Route ---
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--port', type=int, default=8080, help='Port to run the server on')
-    args = parser.parse_args()
-
     # --- Load video on startup (Default > Last > None) ---
     video_to_load = None
     video_load_source = "None"
