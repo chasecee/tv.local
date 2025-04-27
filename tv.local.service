@@ -6,7 +6,7 @@ After=network.target
 # Set the working directory to the project root
 WorkingDirectory=/home/pi/tv.local
 
-# Run the compiled binary instead of Python script
+# Run the compiled binary
 ExecStart=/home/pi/tv.local/web/tvlocal
 
 # Run as pi user

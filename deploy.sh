@@ -65,13 +65,13 @@ install_dependencies() {
         echo "Internet available, updating system packages..."
         sudo apt update
         # Install packages in parallel
-        sudo apt install -y python3-pip python3-dev python3-flask python3-pil python3-numpy ffmpeg &
+        sudo apt install -y python3-pip python3-dev python3-flask python3-pil python3-numpy ffmpeg libcap2-bin &
         PID1=$!
         wait $PID1
     else
         echo "No internet connection. Checking if required packages are installed..."
-        if ! command -v python3 >/dev/null || ! command -v ffmpeg >/dev/null; then
-            echo "ERROR: Critical packages (python3, ffmpeg) missing and no internet to install them."
+        if ! command -v python3 >/dev/null || ! command -v ffmpeg >/dev/null || ! command -v setcap >/dev/null; then
+            echo "ERROR: Critical packages (python3, ffmpeg, libcap2-bin) missing and no internet to install them."
             exit 1
         fi
         echo "Required packages found, proceeding with offline deployment..."
@@ -88,6 +88,14 @@ install_pyinstaller() {
             echo "ERROR: PyInstaller not found and no internet to install it."
             exit 1
         fi
+    fi
+}
+
+# Function to setup capabilities
+setup_capabilities() {
+    if [ "$MODE" = "web" ]; then
+        echo "Setting up capabilities for port 80..."
+        sudo setcap 'cap_net_bind_service=+ep' "$TARGET_DIR/tvlocal"
     fi
 }
 
@@ -161,6 +169,8 @@ deploy() {
     if [ "$MODE" = "web" ]; then
         sudo cp dist/tvlocal "$TARGET_DIR/"
         sudo chmod +x "$TARGET_DIR/tvlocal"
+        # Setup capabilities for web mode
+        setup_capabilities
     else
         sudo cp dist/tvheadless "$TARGET_DIR/"
         sudo chmod +x "$TARGET_DIR/tvheadless"
