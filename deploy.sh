@@ -69,9 +69,9 @@ rm -rf dist/ build/ tvlocal.spec
 
 echo "Building fresh binary..."
 if command -v pyinstaller &> /dev/null; then
-    pyinstaller --onefile --name tvlocal app.py
+    pyinstaller --onefile --name tvlocal --add-data "static:static" --add-data "templates:templates" app.py
 else
-    ~/.local/bin/pyinstaller --onefile --name tvlocal app.py
+    ~/.local/bin/pyinstaller --onefile --name tvlocal --add-data "static:static" --add-data "templates:templates" app.py
 fi
 
 # Install systemd service if it doesn't exist
@@ -136,9 +136,5 @@ if ! command -v ffmpeg &> /dev/null; then
     fi
 fi
 
-# Set permissions
-chmod +x tv-local
-
-# Start the application
-echo "Starting TV Local application..."
-./tv-local 
+# Done! No need to start manually since systemd is handling it
+echo "Deployment complete! Access the web UI at http://tv.local or http://<IP_ADDRESS>" 

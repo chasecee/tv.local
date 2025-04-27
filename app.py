@@ -6,11 +6,23 @@ import shutil # Added for disk usage and frame clearing
 from display import DisplayPlayer # Import DisplayPlayer
 import logging # Added for better logging
 import time # For checking modification times (optional optimization)
+import sys # Added for PyInstaller support
 
 # Configure basic logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-app = Flask(__name__)
+# Handle PyInstaller bundled files
+if getattr(sys, 'frozen', False):
+    # Running in a PyInstaller bundle
+    template_folder = os.path.join(sys._MEIPASS, 'templates')
+    static_folder = os.path.join(sys._MEIPASS, 'static')
+    app = Flask(__name__, template_folder=template_folder, static_folder=static_folder)
+    logging.info(f"Running from PyInstaller bundle. Using templates: {template_folder}, static: {static_folder}")
+else:
+    # Running in normal Python environment
+    app = Flask(__name__)
+    logging.info("Running in normal Python environment")
+
 # Secret key is needed for flashing messages
 # In a real app, use a proper secret key, not this placeholder
 app.secret_key = os.urandom(24) 
