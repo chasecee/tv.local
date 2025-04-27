@@ -6,9 +6,38 @@ import shutil # Added for disk usage and frame clearing
 from display import DisplayPlayer # Import DisplayPlayer
 import logging # Added for better logging
 import time # For checking modification times (optional optimization)
+import socket # For port checking
+import sys # Added for sys.exit
 
 # Configure basic logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+def check_and_kill_port(port):
+    """Check if a port is in use and kill the process if it is."""
+    try:
+        # Try to create a socket on the port
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.bind(('0.0.0.0', port))
+        sock.close()
+        logging.info(f"Port {port} is available.")
+        return True
+    except socket.error:
+        logging.warning(f"Port {port} is in use. Attempting to find and kill the process...")
+        try:
+            # Find the process using the port
+            result = subprocess.run(['lsof', '-i', f':{port}'], capture_output=True, text=True)
+            if result.stdout:
+                # Get the PID from the lsof output
+                lines = result.stdout.split('\n')
+                if len(lines) > 1:  # Skip header line
+                    pid = lines[1].split()[1]
+                    logging.info(f"Found process using port {port} (PID: {pid}). Killing it...")
+                    subprocess.run(['kill', '-9', pid])
+                    time.sleep(1)  # Give it a moment to die
+                    return True
+        except Exception as e:
+            logging.error(f"Error while trying to kill process on port {port}: {e}")
+        return False
 
 app = Flask(__name__)
 # Secret key is needed for flashing messages
@@ -434,6 +463,11 @@ def delete_video(filename):
 # --- End Delete Route ---
 
 if __name__ == '__main__':
+    # Check and kill any process using port 5000
+    if not check_and_kill_port(5000):
+        logging.error("Could not free port 5000. Exiting...")
+        sys.exit(1)
+
     # Copy default videos first
     copy_default_videos()
     

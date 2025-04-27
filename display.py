@@ -290,8 +290,6 @@ class DisplayPlayer:
                 logging.warning("WARN: Playback thread did not join cleanly after 3 seconds.")
             else:
                 logging.info("Playback thread stopped successfully.")
-        else:
-            logging.info("Stop called but playback thread not running or already stopped.")
 
         self._thread = None # Ensure thread object is cleared
 
@@ -317,6 +315,15 @@ class DisplayPlayer:
                      logging.info("LCD resources cleaned up successfully via module_exit.")
                  else:
                      logging.warning("disp object has no module_exit method.")
+
+                 # Additional GPIO cleanup
+                 try:
+                     import RPi.GPIO as GPIO
+                     logging.info("Cleaning up GPIO...")
+                     GPIO.cleanup()
+                     logging.info("GPIO cleanup successful.")
+                 except Exception as e:
+                     logging.error(f"Error during GPIO cleanup: {e}")
 
              except Exception as e:
                  logging.error(f"Error during LCD cleanup: {e}")
