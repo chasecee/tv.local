@@ -17,7 +17,11 @@ try:
     if getattr(sys, 'frozen', False):
         # Running in a PyInstaller bundle
         lib_path = os.path.join(sys._MEIPASS, 'LIB')
-        sys.path.insert(0, lib_path)
+        if os.path.exists(lib_path):
+            sys.path.insert(0, lib_path)
+            logging.info(f"Added PyInstaller bundle path: {lib_path}")
+        else:
+            logging.warning(f"PyInstaller bundle path not found: {lib_path}")
     
     from lib import LCD_2inch
     HAS_LCD = True
@@ -43,12 +47,28 @@ def create_status_image(width, height, message, progress=None, rotate=True):
     
     try:
         # Try loading a default font
-        font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
-        if not os.path.exists(font_path):
-            logging.warning(f"Font not found at {font_path}, trying default.")
-            font_path = None
         font_size = 24  # Slightly larger font
-        font = ImageFont.truetype(font_path, font_size) if font_path else ImageFont.load_default()
+        font_paths = [
+            os.path.join(sys._MEIPASS, 'fonts', 'Font.ttf') if getattr(sys, 'frozen', False) else None,
+            os.path.join(os.path.dirname(__file__), 'python', 'Font', 'Font.ttf'),
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"
+        ]
+        
+        font = None
+        for path in font_paths:
+            if path and os.path.exists(path):
+                try:
+                    font = ImageFont.truetype(path, font_size)
+                    logging.info(f"Using font: {path}")
+                    break
+                except Exception as e:
+                    logging.warning(f"Failed to load font {path}: {e}")
+                    continue
+        
+        if not font:
+            logging.warning("No suitable font found, using default PIL font.")
+            font = ImageFont.load_default()
     except IOError:
         logging.warning("Font file not found. Using default PIL font.")
         font = ImageFont.load_default()
@@ -164,11 +184,22 @@ class DisplayPlayer:
     def _display_image(self, image_path):
         """Loads the image FROM PATH and displays it on the LCD."""
         if not self.lcd_available or not self.disp:
+            logging.warning("LCD not available, skipping image display")
             return
+            
         try:
+            if not os.path.exists(image_path):
+                logging.error(f"Image file not found: {image_path}")
+                return
+                
             img = Image.open(image_path)
-            self.current_frame_path = image_path # Set path when loading this way
+            if not img:
+                logging.error(f"Failed to open image: {image_path}")
+                return
+                
+            self.current_frame_path = image_path
             self.disp.ShowImage(img)
+            logging.debug(f"Displayed image: {image_path}")
         except Exception as e:
             logging.error(f"Error loading/displaying frame {image_path}: {e}")
             self.current_frame_path = None
@@ -180,6 +211,7 @@ class DisplayPlayer:
             progress: Float between 0 and 1 indicating progress, or None
         """
         if not self.lcd_available or not self.disp:
+            logging.warning("LCD not available, skipping processing message")
             return
         
         try:
@@ -191,7 +223,12 @@ class DisplayPlayer:
                 progress=progress,
                 rotate=True
             )
+            if not processing_img:
+                logging.error("Failed to create processing image")
+                return
+                
             self.disp.ShowImage(processing_img)
+            logging.debug("Processing message displayed successfully")
         except Exception as e:
             logging.error(f"Error displaying processing message: {e}")
 

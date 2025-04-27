@@ -167,15 +167,32 @@ deploy() {
         mkdir -p "$PYINSTALLER_CACHE_DIR"
         
         echo "Running PyInstaller for web mode..."
+        # Copy fonts for bundling
+        echo "Copying fonts for bundling..."
+        mkdir -p web/fonts
+        cp -r python/Font/* web/fonts/
+        
+        # Install Python dependencies
+        echo "Installing Python dependencies..."
+        pip3 install -r requirements.txt
+        
         pyinstaller --onefile \
             --noconfirm \
             --add-data "web/lib:LIB" \
             --add-data "display.py:." \
+            --add-data "web/fonts:fonts" \
             --hidden-import lib.LCD_2inch \
             --hidden-import lib.lcdconfig \
             --hidden-import display \
+            --hidden-import PIL \
+            --hidden-import PIL.Image \
+            --hidden-import PIL.ImageDraw \
+            --hidden-import PIL.ImageFont \
             --name tvlocal web/app.py
             
+        # Clean up fonts
+        rm -rf web/fonts
+        
         # Verify binary was built
         if [ ! -f "dist/tvlocal" ]; then
             echo "ERROR: PyInstaller failed to create binary at dist/tvlocal"
@@ -218,9 +235,38 @@ deploy() {
     fi
 
     # Setup service
-    if [ ! -f "/etc/systemd/system/$SERVICE_NAME.service" ]; then
+    if [ "$MODE" = "web" ]; then
         echo "Installing systemd service..."
-        sudo cp "$SERVICE_NAME.service" "/etc/systemd/system/$SERVICE_NAME.service"
+        # Create service file with correct paths
+        cat > tv.local.service << EOF
+[Unit]
+Description=Mini TV Player Service
+After=network.target
+
+[Service]
+# Set the working directory to the project root
+WorkingDirectory=/home/pi/tv.local/web
+
+# Run the compiled binary with port 8080
+ExecStart=/home/pi/tv.local/web/tvlocal --port 8080
+
+# Run as pi user
+User=pi
+Group=pi
+
+# Restart settings
+Restart=always
+RestartSec=10
+
+# Standard output and error logging
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+        
+        sudo cp tv.local.service /etc/systemd/system/
         sudo systemctl daemon-reload
     fi
 
@@ -243,14 +289,16 @@ deploy() {
         echo "Copying binary to $TARGET_DIR/tvlocal..."
         sudo cp dist/tvlocal "$TARGET_DIR/"
         echo "Setting permissions..."
-        sudo chmod +x "$TARGET_DIR/tvlocal"
-        # Verify binary exists and is executable
-        if [ ! -f "$TARGET_DIR/tvlocal" ]; then
-            echo "ERROR: Binary not found at $TARGET_DIR/tvlocal"
+        sudo chown pi:pi "$TARGET_DIR/tvlocal"
+        sudo chmod 755 "$TARGET_DIR/tvlocal"  # rwxr-xr-x
+        
+        # Verify permissions
+        if [ ! -x "$TARGET_DIR/tvlocal" ]; then
+            echo "ERROR: Binary not executable after setting permissions"
             exit 1
         fi
-        if [ ! -x "$TARGET_DIR/tvlocal" ]; then
-            echo "ERROR: Binary not executable at $TARGET_DIR/tvlocal"
+        if [ "$(stat -c '%U' "$TARGET_DIR/tvlocal")" != "pi" ]; then
+            echo "ERROR: Binary not owned by pi user"
             exit 1
         fi
         echo "Binary verified at $TARGET_DIR/tvlocal"

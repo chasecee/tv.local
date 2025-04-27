@@ -7,9 +7,20 @@ from display import DisplayPlayer # Import DisplayPlayer
 import logging # Added for better logging
 import time # For checking modification times (optional optimization)
 import argparse
+import sys
 
 # Configure basic logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+# Normalize paths relative to the application directory
+def get_app_path(path):
+    if getattr(sys, 'frozen', False):
+        # Running as compiled binary
+        base_path = os.path.dirname(sys.executable)
+    else:
+        # Running as script
+        base_path = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(base_path, path)
 
 # Parse command line arguments
 parser = argparse.ArgumentParser(description='TV Local Web Server')
@@ -21,12 +32,12 @@ app = Flask(__name__)
 # In a real app, use a proper secret key, not this placeholder
 app.secret_key = os.urandom(24) 
 
-UPLOAD_FOLDER = 'uploads'
-FRAMES_FOLDER = 'frames'
-STATIC_FOLDER = 'static'
-LAST_VIDEO_FILE = os.path.join('uploads', '.last_video') # File to store the last played video filename
-DEFAULT_VIDEO_FILE = os.path.join('uploads', '.default_video') # File to store the *chosen* default video
-VIDEO_MARKER_FILE = os.path.join('frames', '.video_marker') # Marker for existing frames
+UPLOAD_FOLDER = get_app_path('uploads')
+FRAMES_FOLDER = get_app_path('frames')
+STATIC_FOLDER = get_app_path('static')
+LAST_VIDEO_FILE = os.path.join(UPLOAD_FOLDER, '.last_video') # File to store the last played video filename
+DEFAULT_VIDEO_FILE = os.path.join(UPLOAD_FOLDER, '.default_video') # File to store the *chosen* default video
+VIDEO_MARKER_FILE = os.path.join(FRAMES_FOLDER, '.video_marker') # Marker for existing frames
 ALLOWED_EXTENSIONS = {'mp4'}
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -50,6 +61,42 @@ def shutdown_player():
     logging.info("--- Player shutdown attempt finished. ---")
 
 atexit.register(shutdown_player)
+
+# State management functions
+def save_state(filename, content):
+    """Save state to a file"""
+    try:
+        with open(filename, 'w') as f:
+            f.write(content)
+        return True
+    except Exception as e:
+        logging.error(f"Error saving state to {filename}: {e}")
+        return False
+
+def load_state(filename):
+    """Load state from a file"""
+    try:
+        if os.path.exists(filename):
+            with open(filename, 'r') as f:
+                return f.read().strip()
+    except Exception as e:
+        logging.error(f"Error loading state from {filename}: {e}")
+    return None
+
+def clear_state(filename):
+    """Clear state file"""
+    try:
+        if os.path.exists(filename):
+            os.remove(filename)
+        return True
+    except Exception as e:
+        logging.error(f"Error clearing state file {filename}: {e}")
+        return False
+
+# Initialize state files if they don't exist
+for state_file in [LAST_VIDEO_FILE, DEFAULT_VIDEO_FILE, VIDEO_MARKER_FILE]:
+    if not os.path.exists(state_file):
+        save_state(state_file, '')
 
 # --- Functions for persisting video state (last and default) ---
 def _save_state_filename(filepath, filename):
