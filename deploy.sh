@@ -78,6 +78,7 @@ if [ ! -f "tvlocal.spec" ]; then
     # Optimize for Pi Zero 2W
     export PYTHONOPTIMIZE=2  # Enable Python optimizations
     export PYTHONDONTWRITEBYTECODE=1  # Don't create .pyc files
+    export PYTHONHASHSEED=0  # Make Python's hash randomization deterministic
     
     pyinstaller --name tvlocal --onedir \
         --add-data "static:static" \
@@ -92,6 +93,8 @@ if [ ! -f "tvlocal.spec" ]; then
         --hidden-import display \
         --noconfirm \
         --clean \
+        --strip \
+        --jobs 4 \
         --log-level DEBUG \
         --exclude-module matplotlib \
         --exclude-module tkinter \
