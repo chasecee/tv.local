@@ -43,7 +43,7 @@ install_pyinstaller() {
         else
             echo "ERROR: PyInstaller not found and no internet to install it."
             echo "Please connect to internet or install PyInstaller manually:"
-            echo "pip3 install --user pyinstaller"
+            echo "sudo pip3 install --break-system-packages pyinstaller"
             exit 1
         fi
     else
@@ -88,6 +88,10 @@ fi
 # Generate spec file if it doesn't exist
 if [ ! -f "tvlocal.spec" ]; then
     echo "Generating PyInstaller spec file..."
+    # Optimize for Pi Zero 2W
+    export PYTHONOPTIMIZE=2  # Enable Python optimizations
+    export PYTHONDONTWRITEBYTECODE=1  # Don't create .pyc files
+    
     pyinstaller --name tvlocal --onefile \
         --add-data "static:static" \
         --add-data "templates:templates" \
@@ -105,6 +109,31 @@ if [ ! -f "tvlocal.spec" ]; then
         --exclude-module tkinter \
         --exclude-module PyQt5 \
         --exclude-module PySide2 \
+        --exclude-module pandas \
+        --exclude-module scipy \
+        --exclude-module sklearn \
+        --exclude-module tensorflow \
+        --exclude-module torch \
+        --exclude-module cv2 \
+        --exclude-module pygame \
+        --exclude-module wx \
+        --exclude-module PyGObject \
+        --exclude-module gi \
+        --exclude-module dbus \
+        --exclude-module _tkinter \
+        --exclude-module _gtkagg \
+        --exclude-module _agg2 \
+        --exclude-module _cairo \
+        --exclude-module _curses \
+        --exclude-module _decimal \
+        --exclude-module _hashlib \
+        --exclude-module _lzma \
+        --exclude-module _multiprocessing \
+        --exclude-module _opcode \
+        --exclude-module _posixsubprocess \
+        --exclude-module _ssl \
+        --exclude-module _testcapi \
+        --exclude-module _uuid \
         app.py
 else
     echo "Using existing spec file..."
