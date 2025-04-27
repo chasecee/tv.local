@@ -11,6 +11,23 @@ check_internet() {
     fi
 }
 
+# Function to check if headless version is running
+check_headless_service() {
+    if systemctl is-active --quiet tv.headless; then
+        echo "WARNING: Headless version (tv.headless) is running."
+        read -p "Do you want to stop the headless version and continue? (y/n) " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            sudo systemctl stop tv.headless
+            return 0
+        else
+            echo "Installation aborted."
+            exit 1
+        fi
+    fi
+    return 0
+}
+
 # Function to install dependencies with offline fallback
 install_dependencies() {
     if check_internet; then
@@ -47,6 +64,9 @@ install_pyinstaller() {
     fi
 }
 
+# Check if headless version is running
+check_headless_service
+
 # Install dependencies
 install_dependencies
 
@@ -77,7 +97,7 @@ fi
 # Install systemd service if it doesn't exist
 if [ ! -f /etc/systemd/system/tv.local.service ]; then
     echo "Installing systemd service..."
-    sudo cp tvplayer.service /etc/systemd/system/tv.local.service
+    sudo cp tv.local.service /etc/systemd/system/tv.local.service
     sudo systemctl daemon-reload
 fi
 

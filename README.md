@@ -64,7 +64,7 @@ tv.local/
 ├── app.py              # Main application
 ├── display.py          # LCD display handler
 ├── deploy.sh           # Deployment script
-├── tvplayer.service    # Systemd service
+├── tv.local.service    # Systemd service for web interface
 ├── static/             # Web UI assets
 ├── templates/          # Flask templates
 ├── uploads/            # Video storage

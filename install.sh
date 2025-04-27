@@ -26,14 +26,14 @@ chmod -R 775 "$SCRIPT_DIR/uploads" "$SCRIPT_DIR/frames" "$SCRIPT_DIR/static"
 
 # Install the service file
 echo "Installing systemd service..."
-cp "$SCRIPT_DIR/tvplayer.service" /etc/systemd/system/
-chmod 644 /etc/systemd/system/tvplayer.service
+cp "$SCRIPT_DIR/tvplayer.service" /etc/systemd/system/tv.local.service
+chmod 644 /etc/systemd/system/tv.local.service
 
 # Reload systemd and enable/restart service
 echo "Configuring service..."
 systemctl daemon-reload
-systemctl enable tvplayer
-systemctl restart tvplayer
+systemctl enable tv.local
+systemctl restart tv.local
 
 echo "Installation complete! The TV Player should now be running."
-echo "Check status with: sudo systemctl status tvplayer" 
+echo "Check status with: sudo systemctl status tv.local" 
