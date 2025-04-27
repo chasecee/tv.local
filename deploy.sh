@@ -97,7 +97,16 @@ sudo chmod +x /home/pi/tv.local/tvlocal
 # Copy static assets and templates if they exist
 if [ -d "static" ]; then
     echo "Copying static assets..."
-    sudo cp -r static/* /home/pi/tv.local/static/
+    # Get absolute paths for comparison
+    SRC_DIR=$(realpath static)
+    DST_DIR=$(realpath /home/pi/tv.local/static)
+    
+    # Only copy if source and destination are different
+    if [ "$SRC_DIR" != "$DST_DIR" ]; then
+        sudo cp -r static/* /home/pi/tv.local/static/
+    else
+        echo "Source and destination directories are the same, skipping static assets copy."
+    fi
 fi
 if [ -d "templates" ]; then
     echo "Copying templates..."
