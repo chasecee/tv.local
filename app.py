@@ -486,4 +486,4 @@ if __name__ == '__main__':
     # Start the display player thread AFTER potentially loading frames
     player.start()
     logging.info("Starting Flask server on port 80...")
-    app.run(host='0.0.0.0', port=80, debug=False, use_reloader=False) # Use port 80 for root access 
+    app.run(host='0.0.0.0', port=80, debug=False, use_reloader=False) 

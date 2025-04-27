@@ -9,10 +9,6 @@ WorkingDirectory=/home/pi/tv.local
 # Run the compiled binary instead of Python script
 ExecStart=/home/pi/tv.local/tvlocal
 
-# Run as pi user (important for file permissions)
-User=pi
-Group=pi
-
 # Restart the service if it fails
 Restart=on-failure
 RestartSec=5s
