@@ -156,11 +156,18 @@ deploy() {
         # Copy LCD library to web directory for bundling
         echo "Copying LCD library for bundling..."
         cp -r lib web/
+        echo "Running PyInstaller for web mode..."
         pyinstaller --onefile \
             --add-data "web/lib:LIB" \
             --hidden-import lib.LCD_2inch \
             --hidden-import lib.lcdconfig \
             --name tvlocal web/app.py
+        # Verify binary was built
+        if [ ! -f "dist/tvlocal" ]; then
+            echo "ERROR: PyInstaller failed to create binary at dist/tvlocal"
+            exit 1
+        fi
+        echo "Binary built successfully at dist/tvlocal"
         SERVICE_NAME="tv.local"
         TARGET_DIR="/home/pi/tv.local/web"
     else
@@ -168,11 +175,18 @@ deploy() {
         # Copy LCD library to headless directory for bundling
         echo "Copying LCD library for bundling..."
         cp -r lib headless/
+        echo "Running PyInstaller for headless mode..."
         pyinstaller --onefile \
             --add-data "headless/lib:LIB" \
             --hidden-import lib.LCD_2inch \
             --hidden-import lib.lcdconfig \
             --name tvheadless headless/main.py
+        # Verify binary was built
+        if [ ! -f "dist/tvheadless" ]; then
+            echo "ERROR: PyInstaller failed to create binary at dist/tvheadless"
+            exit 1
+        fi
+        echo "Binary built successfully at dist/tvheadless"
         SERVICE_NAME="tv.headless"
         TARGET_DIR="/home/pi/tv.local/headless"
     fi
@@ -200,13 +214,37 @@ deploy() {
     # Install binary
     echo "Installing new binary..."
     if [ "$MODE" = "web" ]; then
+        echo "Copying binary to $TARGET_DIR/tvlocal..."
         sudo cp dist/tvlocal "$TARGET_DIR/"
+        echo "Setting permissions..."
         sudo chmod +x "$TARGET_DIR/tvlocal"
+        # Verify binary exists and is executable
+        if [ ! -f "$TARGET_DIR/tvlocal" ]; then
+            echo "ERROR: Binary not found at $TARGET_DIR/tvlocal"
+            exit 1
+        fi
+        if [ ! -x "$TARGET_DIR/tvlocal" ]; then
+            echo "ERROR: Binary not executable at $TARGET_DIR/tvlocal"
+            exit 1
+        fi
+        echo "Binary verified at $TARGET_DIR/tvlocal"
         # Setup capabilities for web mode
         setup_capabilities
     else
+        echo "Copying binary to $TARGET_DIR/tvheadless..."
         sudo cp dist/tvheadless "$TARGET_DIR/"
+        echo "Setting permissions..."
         sudo chmod +x "$TARGET_DIR/tvheadless"
+        # Verify binary exists and is executable
+        if [ ! -f "$TARGET_DIR/tvheadless" ]; then
+            echo "ERROR: Binary not found at $TARGET_DIR/tvheadless"
+            exit 1
+        fi
+        if [ ! -x "$TARGET_DIR/tvheadless" ]; then
+            echo "ERROR: Binary not executable at $TARGET_DIR/tvheadless"
+            exit 1
+        fi
+        echo "Binary verified at $TARGET_DIR/tvheadless"
     fi
 
     # Copy assets in parallel if they exist
