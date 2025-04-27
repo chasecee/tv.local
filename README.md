@@ -1,6 +1,6 @@
 # Mini TV Player
 
-A self-contained video player for Raspberry Pi that displays looping video content on a 2" LCD screen. Features a web UI for video management and compiles to a single binary for maximum reliability.
+A self-contained video player for Raspberry Pi Zero 2W that displays looping video content on a 2" LCD screen. Features a web UI for video management and compiles to a single binary for maximum reliability.
 
 ## Features
 
@@ -11,8 +11,9 @@ A self-contained video player for Raspberry Pi that displays looping video conte
 - 🚀 Single-binary deployment
 - 🔌 Power-loss resistant
 - 🎯 12 FPS smooth playback
+- 🎬 Ships with default video
 
-## Quick Start
+## Quick Start (Pi Zero 2W - Bookworm)
 
 1. **Hardware Setup**
 
@@ -25,37 +26,28 @@ A self-contained video player for Raspberry Pi that displays looping video conte
 
    ```bash
    sudo apt update
-   sudo apt install -y ffmpeg git
+   sudo apt install -y ffmpeg git python3-pip python3-flask python3-pil python3-numpy
    ```
 
-3. **Deploy**
+3. **Get Code & Test**
 
    ```bash
    git clone https://github.com/chasecee/tv.local.git
    cd tv.local
-   ./deploy.sh
+   python3 app.py  # Test on port 5000
    ```
 
-4. **Access**
-   - Open `http://tv.local` or `http://<PI_IP_ADDRESS>`
-   - Upload an MP4 file
-   - Watch it play!
+4. **Deploy for Production**
 
-## Binary Deployment Details
+   ```bash
+   ./deploy.sh  # Creates binary & installs service
+   ```
 
-The project uses PyInstaller to create a single binary that includes:
-
-- Flask web server
-- PIL for image processing
-- All Python dependencies
-- Static files and templates
-
-Benefits:
-
-- ✨ No Python environment needed
-- 🛡️ Resistant to filesystem corruption
-- 🚀 Fast startup
-- 🔒 Reliable operation
+5. **Access**
+   - Development: `http://<PI_IP_ADDRESS>:5000`
+   - Production: `http://tv.local` or `http://<PI_IP_ADDRESS>`
+   - Default video (`wonka.mp4`) will play automatically
+   - Upload new videos through web UI
 
 ## Project Structure
 
@@ -67,33 +59,26 @@ tv.local/
 ├── tvplayer.service    # Systemd service
 ├── static/             # Web UI assets
 ├── templates/          # Flask templates
-├── uploads/            # Video storage
-├── frames/             # Converted frames
+├── video/             # Default videos (included in repo)
+├── uploads/            # User video storage (created on run)
+├── frames/             # Converted frames (created on run)
 └── lib/                # LCD driver
 ```
 
-## Development
+## Video Management
 
-If you want to modify the code:
+- **Default Video**:
 
-1. **Setup Dev Environment**
+  - The repo includes `wonka.mp4` as default video
+  - Stored in `video/` directory
+  - Automatically copied to `uploads/` on first run
+  - Set as default if no other default exists
 
-   ```bash
-   python3 -m venv venv
-   source venv/bin/activate
-   pip install -r requirements.txt
-   ```
-
-2. **Run in Dev Mode**
-
-   ```bash
-   python app.py
-   ```
-
-3. **Build Binary**
-   ```bash
-   ./deploy.sh
-   ```
+- **Custom Videos**:
+  - Upload through web UI
+  - Stored in `uploads/` directory
+  - Set any video as default through web UI
+  - All videos automatically converted to frames
 
 ## Troubleshooting
 
@@ -108,10 +93,9 @@ If you want to modify the code:
   - Web UI not accessible: Check service status
   - Upload fails: Check directory permissions
   - LCD not working: Verify SPI is enabled
+  - Frames not showing: Check logs with `journalctl`
 
-## System Optimization
-
-Optional tweaks for better performance:
+## System Optimization (Optional)
 
 ```bash
 # Disable unused services
@@ -120,24 +104,9 @@ sudo systemctl disable --now bluetooth
 # Reduce GPU memory (headless)
 sudo raspi-config nonint do_memory_split 16
 
-# Disable HDMI
+# Disable HDMI to save power
 echo "hdmi_ignore_hotplug=1" | sudo tee -a /boot/config.txt
 ```
-
-## Future Plans
-
-- 📡 AP fallback mode
-- 🖼️ GIF support
-- 🗑️ Web UI file management
-- 📊 Performance monitoring
-
-## Contributing
-
-Pull requests welcome! Please:
-
-1. Fork the repository
-2. Create a feature branch
-3. Submit a pull request
 
 ## License
 

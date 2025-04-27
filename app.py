@@ -35,6 +35,7 @@ app.config['STATIC_FOLDER'] = STATIC_FOLDER # Ensure static folder config is set
 app.config['VIDEO_FOLDER'] = VIDEO_FOLDER  # Add video folder to config
 app.config['CURRENT_VIDEO_FILENAME'] = None # Track active video filename
 app.config['PROCESSING_VIDEO'] = False # Flag for conversion status
+app.config['FRAME_RATE'] = 7  # Set default frame rate to 7 FPS
 
 # Initialize Display Player - PASS THE APP OBJECT
 player = DisplayPlayer(app=app, frames_folder=app.config['FRAMES_FOLDER'])
@@ -218,13 +219,10 @@ def convert_to_frames(video_path, output_folder):
 
     # FFmpeg command with progress pipe
     ffmpeg_cmd = [
-        'ffmpeg',
-        '-i', video_path,
-        '-vf', 'scale=320:240',
-        '-r', '12',
-        '-pix_fmt', 'rgb565le',
-        '-progress', 'pipe:1',  # Output progress to pipe
-        os.path.join(output_folder, 'frame_%04d.png')
+        'ffmpeg', '-i', video_path,
+        '-vf', 'scale=320:240:force_original_aspect_ratio=1,crop=320:240',  # Scale and crop to 320x240
+        '-r', str(app.config.get('FRAME_RATE', 12)),  # Use configurable frame rate, default to 12
+        os.path.join(output_folder, 'frame_%04d.jpg')
     ]
 
     try:

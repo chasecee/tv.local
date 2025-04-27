@@ -98,6 +98,7 @@ if [ ! -f "tvlocal.spec" ]; then
         --add-data "lib:lib" \
         --add-data "web:web" \
         --add-data "images:images" \
+        --add-data "video:video" \
         --hidden-import flask \
         --hidden-import PIL \
         --hidden-import numpy \
@@ -167,7 +168,7 @@ sudo systemctl stop tv.local || true
 
 echo "Setting up application..."
 # Create necessary directories if they don't exist
-sudo mkdir -p /home/pi/tv.local/{uploads,frames,static}
+sudo mkdir -p /home/pi/tv.local/{uploads,frames,static,video}
 sudo chown -R pi:pi /home/pi/tv.local/
 
 # Copy the binary and set permissions
@@ -178,42 +179,19 @@ sudo chmod +x /home/pi/tv.local/tvlocal
 # Copy static assets and templates if they exist
 if [ -d "static" ]; then
     echo "Copying static assets..."
-    # Get absolute paths for comparison
-    SRC_DIR=$(realpath static)
-    DST_DIR=$(realpath /home/pi/tv.local/static)
-    
-    # Only copy if source and destination are different
-    if [ "$SRC_DIR" != "$DST_DIR" ]; then
-        sudo cp -r static/* /home/pi/tv.local/static/
-    else
-        echo "Source and destination directories are the same, skipping static assets copy."
-    fi
+    sudo cp -r static/* /home/pi/tv.local/static/
 fi
 if [ -d "templates" ]; then
     echo "Copying templates..."
-    # Get absolute paths for comparison
-    SRC_DIR=$(realpath templates)
-    DST_DIR=$(realpath /home/pi/tv.local/templates)
-    
-    # Only copy if source and destination are different
-    if [ "$SRC_DIR" != "$DST_DIR" ]; then
-        sudo cp -r templates /home/pi/tv.local/
-    else
-        echo "Source and destination directories are the same, skipping templates copy."
-    fi
+    sudo cp -r templates /home/pi/tv.local/
 fi
 if [ -d "lib" ]; then
     echo "Copying LCD library..."
-    # Get absolute paths for comparison
-    SRC_DIR=$(realpath lib)
-    DST_DIR=$(realpath /home/pi/tv.local/lib)
-    
-    # Only copy if source and destination are different
-    if [ "$SRC_DIR" != "$DST_DIR" ]; then
-        sudo cp -r lib /home/pi/tv.local/
-    else
-        echo "Source and destination directories are the same, skipping lib copy."
-    fi
+    sudo cp -r lib /home/pi/tv.local/
+fi
+if [ -d "video" ]; then
+    echo "Copying default videos..."
+    sudo cp -r video /home/pi/tv.local/
 fi
 
 echo "Starting service..."

@@ -93,11 +93,11 @@ def create_status_image(width, height, message, progress=None, rotate=True):
     return img
 
 class DisplayPlayer:
-    def __init__(self, app, frames_folder='frames', fps=12):
+    def __init__(self, app, frames_folder='frames', fps=None):
         self.app = app
         self.frames_folder = frames_folder
-        self.fps = fps
-        self.frame_delay = 1.0 / fps
+        self.fps = fps or app.config.get('FRAME_RATE', 12)  # Use provided fps or get from app config
+        self.frame_delay = 1.0 / self.fps
         self._thread = None
         self._stop_event = threading.Event()
         self.current_frame_path = None
@@ -105,6 +105,8 @@ class DisplayPlayer:
         self.lcd_available = False
         self.width = 320 # Default width
         self.height = 240 # Default height
+
+        logging.info(f"DisplayPlayer initialized with frame rate: {self.fps} FPS (frame delay: {self.frame_delay:.3f}s)")
 
         if HAS_LCD:
             try:
