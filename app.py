@@ -75,7 +75,7 @@ app.config['STATIC_FOLDER'] = STATIC_FOLDER # Ensure static folder config is set
 app.config['VIDEO_FOLDER'] = VIDEO_FOLDER  # Add video folder to config
 app.config['CURRENT_VIDEO_FILENAME'] = None # Track active video filename
 app.config['PROCESSING_VIDEO'] = False # Flag for conversion status
-app.config['FRAME_RATE'] = 10  # Set default frame rate to 10 FPS
+app.config['FRAME_RATE'] = 12  # Set default frame rate to 12 FPS
 
 logging.info(f"Application configured with frame rate: {app.config['FRAME_RATE']} FPS")
 
