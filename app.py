@@ -11,21 +11,45 @@ import sys # Added for PyInstaller support
 # Configure basic logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Handle PyInstaller bundled files
-if getattr(sys, 'frozen', False):
-    # Running in a PyInstaller bundle
-    template_folder = os.path.join(sys._MEIPASS, 'templates')
-    static_folder = os.path.join(sys._MEIPASS, 'static')
-    app = Flask(__name__, template_folder=template_folder, static_folder=static_folder)
-    logging.info(f"Running from PyInstaller bundle. Using templates: {template_folder}, static: {static_folder}")
-else:
-    # Running in normal Python environment
-    app = Flask(__name__)
-    logging.info("Running in normal Python environment")
+def get_bundle_dir():
+    """Get the base directory for bundled resources."""
+    if getattr(sys, 'frozen', False):
+        # Running in PyInstaller bundle
+        bundle_dir = sys._MEIPASS
+        logging.info(f"Running from PyInstaller bundle at: {bundle_dir}")
+        # List contents of bundle directory for debugging
+        try:
+            logging.info("Bundle contents:")
+            for root, dirs, files in os.walk(bundle_dir):
+                rel_path = os.path.relpath(root, bundle_dir)
+                logging.info(f"Directory: {rel_path}")
+                for file in files:
+                    logging.info(f"  File: {os.path.join(rel_path, file)}")
+        except Exception as e:
+            logging.error(f"Error listing bundle contents: {e}")
+        return bundle_dir
+    return os.path.abspath(os.path.dirname(__file__))
+
+# Get bundle directory
+bundle_dir = get_bundle_dir()
+template_dir = os.path.join(bundle_dir, 'templates')
+static_dir = os.path.join(bundle_dir, 'static')
+
+# Verify directories exist
+logging.info(f"Template directory: {template_dir} (exists: {os.path.exists(template_dir)})")
+logging.info(f"Static directory: {static_dir} (exists: {os.path.exists(static_dir)})")
+
+# Initialize Flask app with correct paths
+app = Flask(__name__, 
+           template_folder=template_dir,
+           static_folder=static_dir)
 
 # Secret key is needed for flashing messages
-# In a real app, use a proper secret key, not this placeholder
-app.secret_key = os.urandom(24) 
+app.secret_key = os.urandom(24)
+
+# Log Flask's configured paths
+logging.info(f"Flask template folder: {app.template_folder}")
+logging.info(f"Flask static folder: {app.static_folder}")
 
 UPLOAD_FOLDER = 'uploads'
 FRAMES_FOLDER = 'frames'

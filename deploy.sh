@@ -69,9 +69,36 @@ rm -rf dist/ build/ tvlocal.spec
 
 echo "Building fresh binary..."
 if command -v pyinstaller &> /dev/null; then
-    pyinstaller --onefile --name tvlocal --add-data "static:static" --add-data "templates:templates" app.py
+    # Use : as separator on Unix systems
+    if [[ "$OSTYPE" == "darwin"* ]] || [[ -f /etc/debian_version ]]; then
+        pyinstaller --onefile --name tvlocal \
+            --add-data "static:static" \
+            --add-data "templates:templates" \
+            --add-data "lib:lib" \
+            app.py
+    else
+        # Use ; as separator on Windows
+        pyinstaller --onefile --name tvlocal \
+            --add-data "static;static" \
+            --add-data "templates;templates" \
+            --add-data "lib;lib" \
+            app.py
+    fi
 else
-    ~/.local/bin/pyinstaller --onefile --name tvlocal --add-data "static:static" --add-data "templates:templates" app.py
+    # Same logic for local PyInstaller
+    if [[ "$OSTYPE" == "darwin"* ]] || [[ -f /etc/debian_version ]]; then
+        ~/.local/bin/pyinstaller --onefile --name tvlocal \
+            --add-data "static:static" \
+            --add-data "templates:templates" \
+            --add-data "lib:lib" \
+            app.py
+    else
+        ~/.local/bin/pyinstaller --onefile --name tvlocal \
+            --add-data "static;static" \
+            --add-data "templates;templates" \
+            --add-data "lib;lib" \
+            app.py
+    fi
 fi
 
 # Install systemd service if it doesn't exist
