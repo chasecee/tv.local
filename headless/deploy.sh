@@ -45,21 +45,52 @@ install_dependencies() {
     fi
 }
 
+# Function to install PyInstaller with offline fallback
+install_pyinstaller() {
+    if ! command -v pyinstaller &> /dev/null; then
+        if check_internet; then
+            echo "Installing PyInstaller system-wide..."
+            sudo pip3 install --break-system-packages pyinstaller
+        else
+            echo "ERROR: PyInstaller not found and no internet to install it."
+            echo "Please connect to internet or install PyInstaller manually:"
+            echo "sudo pip3 install --break-system-packages pyinstaller"
+            exit 1
+        fi
+    else
+        echo "PyInstaller already installed, proceeding..."
+    fi
+}
+
 # Check if web version is running
 check_web_service
 
 # Install dependencies
 install_dependencies
 
+# Install PyInstaller
+install_pyinstaller
+
+# Add local bin to PATH for this session
+export PATH="$HOME/.local/bin:$PATH"
+
+echo "Building fresh binary..."
+rm -rf dist/ build/ tvheadless.spec
+if command -v pyinstaller &> /dev/null; then
+    pyinstaller --onefile --name tvheadless player.py
+else
+    ~/.local/bin/pyinstaller --onefile --name tvheadless player.py
+fi
+
 # Create directories
 echo "Setting up directories..."
 sudo mkdir -p /home/pi/tv.headless/{videos,frames}
 sudo chown -R pi:pi /home/pi/tv.headless/
 
-# Copy the player script
-echo "Installing player script..."
-sudo cp player.py /home/pi/tv.headless/
-sudo chmod +x /home/pi/tv.headless/player.py
+# Copy the binary and set permissions
+echo "Installing binary..."
+sudo cp dist/tvheadless /home/pi/tv.headless/
+sudo chmod +x /home/pi/tv.headless/tvheadless
 
 # Copy the display library
 echo "Copying LCD library..."
