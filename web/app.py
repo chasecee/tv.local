@@ -409,7 +409,7 @@ def delete_video(filename):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--port', type=int, default=80, help='Port to run the server on')
+    parser.add_argument('--port', type=int, default=8080, help='Port to run the server on')
     args = parser.parse_args()
 
     # --- Load video on startup (Default > Last > None) ---
