@@ -86,7 +86,7 @@ sudo systemctl stop tv.local || true
 
 echo "Setting up application..."
 # Create necessary directories if they don't exist
-sudo mkdir -p /home/pi/tv.local/{uploads,frames,static}
+sudo mkdir -p /home/pi/tv.local/{uploads,frames,static,templates,lib}
 sudo chown -R pi:pi /home/pi/tv.local/
 
 # Copy the binary and set permissions
@@ -94,19 +94,23 @@ echo "Installing new binary..."
 sudo cp dist/tvlocal /home/pi/tv.local/
 sudo chmod +x /home/pi/tv.local/tvlocal
 
-# Copy static assets and templates if they exist
-if [ -d "static" ]; then
-    echo "Copying static assets..."
-    sudo cp -r static/* /home/pi/tv.local/static/
-fi
-if [ -d "templates" ]; then
-    echo "Copying templates..."
-    sudo cp -r templates /home/pi/tv.local/
-fi
-if [ -d "lib" ]; then
-    echo "Copying LCD library..."
-    sudo cp -r lib /home/pi/tv.local/
-fi
+# Function to safely copy directories
+safe_copy_dir() {
+    local src="$1"
+    local dest="$2"
+    if [ -d "$src" ]; then
+        echo "Updating $dest directory..."
+        # Remove old files first
+        sudo rm -rf "$dest"/*
+        # Copy new files
+        sudo cp -r "$src"/* "$dest"/ 2>/dev/null || true
+    fi
+}
+
+# Copy static assets and templates
+safe_copy_dir "static" "/home/pi/tv.local/static"
+safe_copy_dir "templates" "/home/pi/tv.local/templates"
+safe_copy_dir "lib" "/home/pi/tv.local/lib"
 
 echo "Starting service..."
 sudo systemctl enable tv.local || true

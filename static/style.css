@@ -1,17 +1,13 @@
-/* Modern dark mode styling for Mini TV Player UI */
+/* Terminal-style modern UI for Mini TV Player */
 :root {
-  --primary: #3b82f6;
-  --primary-dark: #2563eb;
-  --danger: #ef4444;
-  --success: #22c55e;
-  --bg-dark: #0f172a;
-  --bg-card: #1e293b;
-  --bg-hover: #334155;
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --border-color: #334155;
-  --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
-  --radius: 8px;
+  --bg: #000000;
+  --text: #ffffff;
+  --border: #ffffff;
+  --hover-bg: #1a1a1a;
+  --shadow: 0 4px 6px -1px rgba(255, 255, 255, 0.1);
+  --radius: 4px;
+  --mono: "JetBrains Mono", "Fira Code", "SF Mono", Monaco, Consolas,
+    "Courier New", monospace;
 }
 
 * {
@@ -21,10 +17,10 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  line-height: 1.5;
-  color: var(--text-primary);
-  background: var(--bg-dark);
+  font-family: var(--mono);
+  line-height: 1.6;
+  color: var(--text);
+  background: var(--bg);
   padding: 2rem;
   min-height: 100vh;
 }
@@ -32,97 +28,105 @@ body {
 .container {
   max-width: 800px;
   margin: 0 auto;
-  background: var(--bg-card);
+  background: var(--bg);
   padding: 2rem;
+  border: 1px solid var(--border);
   border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  border: 1px solid var(--border-color);
 }
 
 h1 {
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--primary);
+  font-size: 1.75rem;
+  font-weight: normal;
+  color: var(--text);
   text-align: center;
   margin-bottom: 2rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 1rem;
 }
 
 h2 {
   font-size: 1.25rem;
-  color: var(--text-primary);
+  font-weight: normal;
+  color: var(--text);
   margin: 2rem 0 1rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.5rem;
 }
 
 /* Upload Form */
 .upload-form {
-  background: var(--bg-hover);
   padding: 1.5rem;
+  border: 1px solid var(--border);
   border-radius: var(--radius);
-  border: 2px dashed var(--border-color);
   margin-bottom: 2rem;
   transition: all 0.2s;
 }
 
 .upload-form:hover {
-  border-color: var(--primary);
-  transform: translateY(-2px);
+  background: var(--hover-bg);
 }
 
 .upload-form small {
-  color: var(--text-secondary);
+  color: var(--text);
+  opacity: 0.7;
   display: block;
   margin-top: 0.5rem;
 }
 
 /* File input styling */
 input[type="file"] {
-  background: var(--bg-dark);
-  color: var(--text-primary);
+  background: var(--bg);
+  color: var(--text);
   padding: 0.5rem;
+  border: 1px solid var(--border);
   border-radius: var(--radius);
-  border: 1px solid var(--border-color);
   width: 100%;
   margin-bottom: 1rem;
+  font-family: var(--mono);
 }
 
 input[type="file"]::-webkit-file-upload-button {
-  background: var(--primary);
-  color: white;
+  background: var(--text);
+  color: var(--bg);
   padding: 0.5rem 1rem;
   border: none;
   border-radius: var(--radius);
   cursor: pointer;
   margin-right: 1rem;
+  font-family: var(--mono);
 }
 
 /* Buttons */
 button {
   padding: 0.5rem 1rem;
   border-radius: var(--radius);
-  border: none;
-  font-weight: 500;
+  border: 1px solid var(--border);
+  font-weight: normal;
   cursor: pointer;
   transition: all 0.2s;
+  font-family: var(--mono);
+  background: var(--bg);
+  color: var(--text);
 }
 
 button:hover {
-  transform: translateY(-1px);
-  filter: brightness(110%);
+  background: var(--text);
+  color: var(--bg);
 }
 
-.play-button {
-  background: var(--success);
-  color: white;
-}
-
-.delete-button {
-  background: var(--danger);
-  color: white;
-}
-
+.play-button,
+.delete-button,
 .default-button {
-  background: var(--primary);
-  color: white;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.play-button:hover,
+.delete-button:hover,
+.default-button:hover {
+  background: var(--text);
+  color: var(--bg);
 }
 
 /* Video List */
@@ -135,16 +139,15 @@ button:hover {
   align-items: center;
   justify-content: space-between;
   padding: 1rem;
-  background: var(--bg-hover);
+  background: var(--bg);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   margin-bottom: 0.75rem;
   transition: all 0.2s;
-  border: 1px solid var(--border-color);
 }
 
 .video-item:hover {
-  transform: translateX(4px);
-  background: var(--bg-dark);
+  background: var(--hover-bg);
 }
 
 .video-actions {
@@ -154,12 +157,16 @@ button:hover {
 
 /* Status Info */
 .status-info {
-  color: var(--text-secondary);
+  color: var(--text);
   margin: 1rem 0;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
 }
 
 .status-info strong {
-  color: var(--primary);
+  color: var(--text);
+  font-weight: bold;
 }
 
 /* Flash Messages */
@@ -172,31 +179,25 @@ button:hover {
   padding: 1rem;
   border-radius: var(--radius);
   margin-bottom: 0.5rem;
-  background: var(--bg-dark);
-  border: 1px solid currentColor;
+  border: 1px solid var(--border);
+  background: var(--bg);
 }
 
-.flash-success {
-  color: var(--success);
-}
-
-.flash-error {
-  color: var(--danger);
-}
-
+.flash-success,
+.flash-error,
 .flash-info {
-  color: var(--primary);
+  color: var(--text);
 }
 
 /* Disk Usage */
 .disk-usage {
   margin-top: 2rem;
   padding: 1rem;
-  background: var(--bg-hover);
+  background: var(--bg);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   font-size: 0.875rem;
-  color: var(--text-secondary);
-  border: 1px solid var(--border-color);
+  color: var(--text);
 }
 
 /* Radio Buttons */
@@ -207,11 +208,11 @@ button:hover {
 }
 
 .radio-group label {
-  color: var(--text-primary);
+  color: var(--text);
 }
 
 input[type="radio"] {
-  accent-color: var(--primary);
+  accent-color: var(--text);
   width: 1.25rem;
   height: 1.25rem;
 }
@@ -220,10 +221,10 @@ input[type="radio"] {
 .empty-state {
   text-align: center;
   padding: 2rem;
-  color: var(--text-secondary);
-  background: var(--bg-hover);
+  color: var(--text);
+  opacity: 0.7;
+  border: 1px solid var(--border);
   border-radius: var(--radius);
-  border: 1px solid var(--border-color);
 }
 
 /* Responsive Design */
