@@ -29,7 +29,6 @@ wheels/
 # Project specific
 frames/
 uploads/
-videos/
 *.pyc
 tvlocal
 tvheadless

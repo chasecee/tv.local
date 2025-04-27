@@ -30,6 +30,7 @@ A simplified version of the TV Player that runs without a web interface. Just dr
 /home/pi/tv.headless/
 ├── tvheadless     # Compiled binary
 ├── videos/        # Drop your MP4 files here
+│   └── default_video.mp4  # Example video file
 ├── frames/        # Converted frames (managed automatically)
 └── lib/           # LCD driver
 ```
@@ -52,11 +53,20 @@ sudo journalctl -fu tv.headless
 
 ## Default Video
 
-To set a default video that plays on startup:
+The player will look for a default video to play on startup. To set a default:
 
-```bash
-echo "your_video.mp4" | sudo tee /home/pi/tv.headless/.default_video
-```
+1. Make sure your video is in the videos directory:
+
+   ```bash
+   sudo cp your_video.mp4 /home/pi/tv.headless/videos/
+   ```
+
+2. Set it as default:
+   ```bash
+   echo "your_video.mp4" | sudo tee /home/pi/tv.headless/.default_video
+   ```
+
+If no default is set, the player will use the first video it finds in the videos directory.
 
 ## Switching Between Versions
 
