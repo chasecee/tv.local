@@ -95,7 +95,7 @@ def create_status_image(width, height, message, progress=None, rotate=True):
 
 class DisplayPlayer:
     def __init__(self, app, frames_folder='frames', fps=12):
-        self.app = app
+        self.app = app  # Can be None for headless mode
         self.frames_folder = frames_folder
         self.fps = fps
         self.frame_delay = 1.0 / fps
@@ -106,34 +106,48 @@ class DisplayPlayer:
         self.lcd_available = False
         self.width = 320 # Default width
         self.height = 240 # Default height
+        self._processing = False  # Local processing flag for headless mode
 
         if HAS_LCD:
             try:
                 # Initialize Waveshare display object
-                # Configuration (pins, etc.) is likely handled inside LCD_2inch based on lcdconfig.py
                 self.disp = LCD_2inch.LCD_2inch()
                 logging.info("Waveshare LCD object created.")
                 self.disp.Init()
                 logging.info("Waveshare LCD Initialized Successfully.")
-                # Store dimensions for status image
                 self.width = self.disp.width
                 self.height = self.disp.height
-                # Optional: Clear display
                 logging.info("Clearing display...")
                 self.disp.clear()
-                # Set backlight (example uses 80%, range 0-100)
                 logging.info("Setting backlight to 80%")
                 self.disp.bl_DutyCycle(80)
                 self.lcd_available = True
             except Exception as e:
                 logging.error(f"Error initializing Waveshare LCD: {e}")
-                # Set default dims even if init fails, for safety
                 self.width = 320
                 self.height = 240
                 self.disp = None
                 self.lcd_available = False
         else:
             logging.warning("LCD hardware/library not available. Skipping LCD initialization.")
+
+    def is_processing(self):
+        """Check if video processing is active, works in both web and headless modes"""
+        if self.app:
+            # Web mode - use Flask app config
+            return self.app.config.get('PROCESSING_VIDEO', False)
+        else:
+            # Headless mode - use local flag
+            return self._processing
+
+    def set_processing(self, state):
+        """Set processing state, works in both web and headless modes"""
+        if self.app:
+            # Web mode - use Flask app config
+            self.app.config['PROCESSING_VIDEO'] = state
+        else:
+            # Headless mode - use local flag
+            self._processing = state
 
     def _get_frames(self):
         """Gets a sorted list of frame image paths."""
@@ -178,38 +192,36 @@ class DisplayPlayer:
     def _playback_loop(self):
         """Main loop that plays frames, pausing if processing is active."""
         logging.info("Starting playback loop thread...")
-        last_processing_state = False # Track changes
+        last_processing_state = False
         consecutive_processing_checks = 0
         consecutive_no_frames_found = 0
 
         while not self._stop_event.is_set():
-            is_processing = False
             try:
-                # Check if video processing is happening - USE self.app.config
-                is_processing = self.app.config.get('PROCESSING_VIDEO', False)
+                # Use the new is_processing method
+                is_processing = self.is_processing()
 
                 if is_processing:
                     if not last_processing_state:
-                        logging.info("Playback loop: Detected PROCESSING_VIDEO = True. Pausing playback.")
+                        logging.info("Playback loop: Processing detected. Pausing playback.")
                         last_processing_state = True
                         consecutive_processing_checks = 0
                     else:
                         consecutive_processing_checks += 1
-                        if consecutive_processing_checks % 20 == 0: # Log every 10 seconds (20 * 0.5s sleep)
-                            logging.info(f"Playback loop: Still paused due to PROCESSING_VIDEO flag ({consecutive_processing_checks * 0.5:.1f}s).")
+                        if consecutive_processing_checks % 20 == 0:
+                            logging.info(f"Playback loop: Still paused due to processing ({consecutive_processing_checks * 0.5:.1f}s).")
 
-                    time.sleep(0.5) # Wait and check again
-                    continue # Skip frame display for this iteration
-                else:
-                    if last_processing_state:
-                        logging.info("Playback loop: Detected PROCESSING_VIDEO = False. Resuming playback checks.")
-                        last_processing_state = False
-                        consecutive_processing_checks = 0 # Reset counter
-                    # Proceed to frame checking
+                    time.sleep(0.5)
+                    continue
+
+                if last_processing_state:
+                    logging.info("Playback loop: Processing finished. Resuming playback checks.")
+                    last_processing_state = False
+                    consecutive_processing_checks = 0
 
             except Exception as e:
                 logging.error(f"Playback loop: Error checking processing flag: {e}")
-                time.sleep(1) # Wait longer on unexpected errors
+                time.sleep(1)
                 continue
 
             # --- Get current frame paths --- 

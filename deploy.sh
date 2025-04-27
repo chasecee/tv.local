@@ -117,23 +117,47 @@ sudo chmod +x /home/pi/tv.local/tvlocal
 # Copy static assets and templates if they exist
 if [ -d "static" ]; then
     echo "Copying static assets..."
-    # Only copy if files are different or don't exist
-    for file in static/*; do
-        if [ -f "$file" ]; then
-            dest_file="/home/pi/tv.local/static/$(basename "$file")"
-            if [ ! -f "$dest_file" ] || ! cmp -s "$file" "$dest_file"; then
-                sudo cp "$file" "$dest_file"
-            fi
-        fi
-    done
+    src_dir="$(pwd)/static"
+    dest_dir="/home/pi/tv.local/static"
+    
+    if [ "$src_dir" != "$dest_dir" ]; then
+        # Remove old static files first
+        sudo rm -rf "$dest_dir"
+        sudo cp -r "$src_dir" "/home/pi/tv.local/"
+        echo "Static assets updated."
+    else
+        echo "Source and destination are the same, skipping static assets copy."
+    fi
 fi
 if [ -d "templates" ]; then
     echo "Copying templates..."
-    sudo cp -r templates /home/pi/tv.local/
+    # Get absolute paths to avoid self-copying
+    src_dir="$(pwd)/templates"
+    dest_dir="/home/pi/tv.local/templates"
+    
+    # Only copy if source and destination are different
+    if [ "$src_dir" != "$dest_dir" ]; then
+        # Remove old templates first to ensure clean state
+        sudo rm -rf "$dest_dir"
+        sudo cp -r "$src_dir" "/home/pi/tv.local/"
+        echo "Templates updated."
+    else
+        echo "Source and destination are the same, skipping template copy."
+    fi
 fi
 if [ -d "lib" ]; then
     echo "Copying LCD library..."
-    sudo cp -r lib /home/pi/tv.local/
+    src_dir="$(pwd)/lib"
+    dest_dir="/home/pi/tv.local/lib"
+    
+    if [ "$src_dir" != "$dest_dir" ]; then
+        # Remove old lib files first
+        sudo rm -rf "$dest_dir"
+        sudo cp -r "$src_dir" "/home/pi/tv.local/"
+        echo "LCD library updated."
+    else
+        echo "Source and destination are the same, skipping LCD library copy."
+    fi
 fi
 
 echo "Starting service..."

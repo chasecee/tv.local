@@ -106,6 +106,9 @@ class HeadlessPlayer:
             for frame in self.frames_dir.glob('frame_*.png'):
                 frame.unlink()
             
+            # Set processing flag
+            self.display.set_processing(True)
+            
             # Convert video to frames
             cmd = [
                 'ffmpeg', '-i', str(video_path),
@@ -124,6 +127,9 @@ class HeadlessPlayer:
         except Exception as e:
             logging.error(f"Error converting video: {e}")
             return False
+        finally:
+            # Always clear processing flag
+            self.display.set_processing(False)
 
     def play_video(self, video_path):
         """Play a single video file"""
