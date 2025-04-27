@@ -1,0 +1,25 @@
+[Unit]
+Description=Headless TV Player Service
+After=network.target
+
+[Service]
+# Set the working directory
+WorkingDirectory=/home/pi/tv.headless
+
+# Run the Python script directly (no binary for headless version)
+ExecStart=/home/pi/tv.headless/player.py
+
+# Run as pi user
+User=pi
+Group=pi
+
+# Restart settings
+Restart=always
+RestartSec=10
+
+# Standard output and error logging
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target 

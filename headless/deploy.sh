@@ -10,6 +10,23 @@ check_internet() {
     fi
 }
 
+# Function to check if web version is running
+check_web_service() {
+    if systemctl is-active --quiet tv.local; then
+        echo "WARNING: Web version (tv.local) is running."
+        read -p "Do you want to stop the web version and continue? (y/n) " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            sudo systemctl stop tv.local
+            return 0
+        else
+            echo "Installation aborted."
+            exit 1
+        fi
+    fi
+    return 0
+}
+
 # Function to install dependencies
 install_dependencies() {
     if check_internet; then
@@ -28,6 +45,9 @@ install_dependencies() {
     fi
 }
 
+# Check if web version is running
+check_web_service
+
 # Install dependencies
 install_dependencies
 
@@ -45,26 +65,15 @@ sudo chmod +x /home/pi/tv.headless/player.py
 echo "Copying LCD library..."
 sudo cp -r ../lib /home/pi/tv.headless/
 
-# Create systemd service
+# Create state files with proper permissions
+echo "Setting up state files..."
+sudo touch /home/pi/tv.headless/{.last_video,.default_video,.video_marker}
+sudo chown pi:pi /home/pi/tv.headless/{.last_video,.default_video,.video_marker}
+sudo chmod 644 /home/pi/tv.headless/{.last_video,.default_video,.video_marker}
+
+# Install systemd service
 echo "Installing systemd service..."
-cat > tv.headless.service << EOF
-[Unit]
-Description=Headless TV Player
-After=network.target
-
-[Service]
-Type=simple
-User=pi
-WorkingDirectory=/home/pi/tv.headless
-ExecStart=/home/pi/tv.headless/player.py
-Restart=always
-RestartSec=10
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-sudo cp tv.headless.service /etc/systemd/system/
+sudo cp headless.service /etc/systemd/system/tv.headless.service
 sudo systemctl daemon-reload
 
 echo "Starting service..."
@@ -73,5 +82,6 @@ sudo systemctl start tv.headless
 
 echo "Headless deployment complete! 🎉"
 echo "To add videos, copy MP4 files to /home/pi/tv.headless/videos/"
+echo "To set a default video, create a file named .default_video with the video filename"
 echo "Service status:"
 systemctl status tv.headless --no-pager 
