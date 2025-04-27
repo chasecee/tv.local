@@ -482,6 +482,20 @@ if __name__ == '__main__':
         logging.error("Could not free port 5000. Exiting...")
         sys.exit(1)
 
+    # Check if frames directory exists and has frames
+    if os.path.exists(FRAMES_FOLDER):
+        frames = glob.glob(os.path.join(FRAMES_FOLDER, 'frame_*.jpg'))
+        if frames:
+            logging.info(f"Found {len(frames)} existing JPG frames in {FRAMES_FOLDER}")
+            logging.info("Frames will persist through reboots as they are stored on disk")
+            if len(frames) > 0:
+                logging.debug(f"First frame: {frames[0]}")
+                logging.debug(f"Last frame: {frames[-1]}")
+        else:
+            logging.info(f"No existing frames found in {FRAMES_FOLDER}")
+    else:
+        logging.info(f"Frames directory {FRAMES_FOLDER} does not exist yet")
+
     # Copy default videos first
     copy_default_videos()
     
@@ -521,7 +535,7 @@ if __name__ == '__main__':
 
         # --- Check if frames already exist and match --- 
         marker_filename = read_video_marker()
-        frames_exist = any(fname.startswith('frame_') and fname.endswith('.png') for fname in os.listdir(FRAMES_FOLDER)) 
+        frames_exist = any(fname.startswith('frame_') and fname.endswith('.jpg') for fname in os.listdir(FRAMES_FOLDER)) 
 
         if marker_filename == video_to_load and frames_exist:
              logging.info(f"Marker file matches '{video_to_load}' and frames exist. Skipping conversion.")
@@ -532,7 +546,7 @@ if __name__ == '__main__':
              if marker_filename != video_to_load:
                  logging.info(f"Marker file ('{marker_filename}') does not match target video ('{video_to_load}'). Will convert.")
              if not frames_exist:
-                 logging.info("Frames directory is empty or missing PNG frames. Will convert.")
+                 logging.info("Frames directory is empty or missing JPG frames. Will convert.")
              
              # --- Proceed with conversion --- 
              app.config['PROCESSING_VIDEO'] = True
