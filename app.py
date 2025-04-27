@@ -15,9 +15,15 @@ app = Flask(__name__)
 # In a real app, use a proper secret key, not this placeholder
 app.secret_key = os.urandom(24) 
 
+# Development mode settings
+app.config['DEBUG'] = True  # Enable debug mode
+app.config['TEMPLATES_AUTO_RELOAD'] = True  # Auto-reload templates
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0  # Disable caching
+
 UPLOAD_FOLDER = 'uploads'
 FRAMES_FOLDER = 'frames'
 STATIC_FOLDER = 'static'
+VIDEO_FOLDER = 'video'  # Add video folder constant
 LAST_VIDEO_FILE = '.last_video' # File to store the last played video filename
 DEFAULT_VIDEO_FILE = '.default_video' # File to store the *chosen* default video
 VIDEO_MARKER_FILE = os.path.join(FRAMES_FOLDER, '.video_marker') # Marker for existing frames
@@ -26,6 +32,7 @@ ALLOWED_EXTENSIONS = {'mp4'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['FRAMES_FOLDER'] = FRAMES_FOLDER
 app.config['STATIC_FOLDER'] = STATIC_FOLDER # Ensure static folder config is set
+app.config['VIDEO_FOLDER'] = VIDEO_FOLDER  # Add video folder to config
 app.config['CURRENT_VIDEO_FILENAME'] = None # Track active video filename
 app.config['PROCESSING_VIDEO'] = False # Flag for conversion status
 
@@ -36,6 +43,28 @@ player = DisplayPlayer(app=app, frames_folder=app.config['FRAMES_FOLDER'])
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(FRAMES_FOLDER, exist_ok=True)
 os.makedirs(STATIC_FOLDER, exist_ok=True)
+
+# Copy default videos from video/ to uploads/ if they don't exist
+def copy_default_videos():
+    """Copy videos from video/ to uploads/ if they don't exist in uploads/"""
+    if not os.path.exists(VIDEO_FOLDER):
+        logging.warning(f"No {VIDEO_FOLDER}/ directory found. Skipping default video copy.")
+        return
+    
+    for video in os.listdir(VIDEO_FOLDER):
+        if allowed_file(video):
+            src = os.path.join(VIDEO_FOLDER, video)
+            dst = os.path.join(UPLOAD_FOLDER, video)
+            if not os.path.exists(dst):
+                try:
+                    shutil.copy2(src, dst)
+                    logging.info(f"Copied default video: {video}")
+                    # If no default video is set, set the first valid video as default
+                    if not load_default_video():
+                        save_default_video(video)
+                        logging.info(f"Set {video} as default video")
+                except Exception as e:
+                    logging.error(f"Failed to copy default video {video}: {e}")
 
 # Function to stop the player thread gracefully on exit
 def shutdown_player():
@@ -407,6 +436,9 @@ def delete_video(filename):
 # --- End Delete Route ---
 
 if __name__ == '__main__':
+    # Copy default videos first
+    copy_default_videos()
+    
     # --- Load video on startup (Default > Last > None) ---
     video_to_load = None
     video_load_source = "None"
@@ -481,9 +513,8 @@ if __name__ == '__main__':
         logging.info("No default or last video found/valid, starting with empty player.")
         # Ensure frames folder is empty if we aren't loading anything
         clear_frames_folder(app.config['FRAMES_FOLDER']) # This also removes the marker
-    # --- End load video on startup ---
 
     # Start the display player thread AFTER potentially loading frames
     player.start()
-    logging.info("Starting Flask server on port 80...")
-    app.run(host='0.0.0.0', port=80, debug=False, use_reloader=False) # Use port 80 for root access 
+    logging.info("Starting Flask server on port 5000...")
+    app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False) # Debug mode but no reloader to avoid thread issues 
