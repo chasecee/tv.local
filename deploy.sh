@@ -221,41 +221,10 @@ sudo systemctl daemon-reload
 sudo systemctl enable tv.health
 sudo systemctl start tv.health
 
-# Create a simple status page
-cat > /home/pi/tv.local/status.html << 'EOL'
-<!DOCTYPE html>
-<html>
-<head>
-    <title>TV Local Status</title>
-    <meta http-equiv="refresh" content="30">
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
-        .running { background-color: #d4edda; color: #155724; }
-        .stopped { background-color: #f8d7da; color: #721c24; }
-    </style>
-</head>
-<body>
-    <h1>TV Local Status</h1>
-    <div class="status" id="serviceStatus">Checking status...</div>
-    <script>
-        fetch('/status')
-            .then(response => response.json())
-            .then(data => {
-                const statusDiv = document.getElementById('serviceStatus');
-                statusDiv.className = 'status ' + (data.running ? 'running' : 'stopped');
-                statusDiv.textContent = data.running ? 'Service is running' : 'Service is stopped';
-            });
-    </script>
-</body>
-</html>
-EOL
-
 echo "Appliance setup complete! The system will:"
 echo "1. Automatically restart if the service stops"
 echo "2. Monitor system health every minute"
-echo "3. Provide a simple web status page"
-echo "4. Auto-recover from common errors"
+echo "3. Auto-recover from common errors"
 
 # Final status check
 echo "Current status:"
