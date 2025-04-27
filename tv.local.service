@@ -14,6 +14,9 @@ ExecStart=/home/pi/tv.local/dist/tvlocal/tvlocal
 User=pi
 Group=pi
 
+# Add necessary groups for GPIO access
+SupplementaryGroups=gpio,i2c,spi
+
 # Restart the service if it fails
 Restart=on-failure
 RestartSec=5s

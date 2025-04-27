@@ -16,14 +16,19 @@ install_dependencies() {
     if check_internet; then
         echo "Internet available, updating system packages..."
         sudo apt update
-        sudo apt install -y python3-pip python3-dev python3-flask python3-pil python3-numpy ffmpeg
+        sudo apt install -y python3-pip python3-dev python3-flask python3-pil python3-numpy ffmpeg pigpio python3-pigpio
+        # Start and enable pigpio daemon
+        sudo systemctl enable pigpiod
+        sudo systemctl start pigpiod
+        # Add user to necessary groups
+        sudo usermod -a -G gpio,i2c,spi pi
     else
         echo "No internet connection. Checking if required packages are installed..."
         # Check for critical packages
         if ! command -v python3 >/dev/null || ! command -v ffmpeg >/dev/null; then
             echo "ERROR: Critical packages (python3, ffmpeg) missing and no internet to install them."
             echo "Please connect to internet or install packages manually:"
-            echo "sudo apt install python3-pip python3-dev python3-flask python3-pil python3-numpy ffmpeg"
+            echo "sudo apt install python3-pip python3-dev python3-flask python3-pil python3-numpy ffmpeg pigpio python3-pigpio"
             exit 1
         fi
         echo "Required packages found, proceeding with offline deployment..."
