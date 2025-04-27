@@ -65,7 +65,7 @@ install_dependencies() {
         echo "Internet available, updating system packages..."
         sudo apt update
         # Install packages in parallel
-        sudo apt install -y python3-pip python3-dev python3-flask python3-pil python3-numpy ffmpeg libcap2-bin &
+        sudo apt install -y python3-pip python3-dev python3-flask python3-pil python3-numpy ffmpeg libcap2-bin python3-spidev &
         PID1=$!
         wait $PID1
     else
@@ -160,7 +160,7 @@ deploy() {
         
         # Install Python dependencies
         echo "Installing Python dependencies..."
-        pip3 install --break-system-packages -r requirements.txt
+        # No need to install anything via pip, all packages are from apt
         
         # Copy lib files to web directory
         echo "Copying lib files to web directory..."
@@ -206,7 +206,7 @@ deploy() {
         
         # Install Python dependencies
         echo "Installing Python dependencies..."
-        pip3 install --break-system-packages -r requirements.txt
+        # No need to install anything via pip, all packages are from apt
         
         # Copy lib files to web directory
         echo "Copying lib files to web directory..."
