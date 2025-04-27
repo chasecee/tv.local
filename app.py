@@ -23,21 +23,51 @@ def check_and_kill_port(port):
         return True
     except socket.error:
         logging.warning(f"Port {port} is in use. Attempting to find and kill the process...")
+        
+        # Try different methods to find the process
+        pid = None
         try:
-            # Find the process using the port
-            result = subprocess.run(['lsof', '-i', f':{port}'], capture_output=True, text=True)
-            if result.stdout:
-                # Get the PID from the lsof output
-                lines = result.stdout.split('\n')
-                if len(lines) > 1:  # Skip header line
-                    pid = lines[1].split()[1]
-                    logging.info(f"Found process using port {port} (PID: {pid}). Killing it...")
-                    subprocess.run(['kill', '-9', pid])
-                    time.sleep(1)  # Give it a moment to die
-                    return True
+            # Try netstat first
+            result = subprocess.run(['netstat', '-tulpn'], capture_output=True, text=True)
+            for line in result.stdout.split('\n'):
+                if f':{port}' in line and 'LISTEN' in line:
+                    parts = line.split()
+                    pid = parts[-1].split('/')[0]
+                    break
         except Exception as e:
-            logging.error(f"Error while trying to kill process on port {port}: {e}")
-        return False
+            logging.warning(f"netstat failed: {e}")
+            try:
+                # Try ss as fallback
+                result = subprocess.run(['ss', '-tulpn'], capture_output=True, text=True)
+                for line in result.stdout.split('\n'):
+                    if f':{port}' in line and 'LISTEN' in line:
+                        parts = line.split()
+                        pid = parts[-1].split('/')[0]
+                        break
+            except Exception as e:
+                logging.warning(f"ss failed: {e}")
+                # Last resort: try pkill
+                try:
+                    logging.info("Trying pkill as last resort...")
+                    subprocess.run(['pkill', '-9', '-f', f'python.*:{port}'])
+                    time.sleep(1)
+                    return True
+                except Exception as e:
+                    logging.error(f"pkill failed: {e}")
+                    return False
+
+        if pid:
+            try:
+                logging.info(f"Found process using port {port} (PID: {pid}). Killing it...")
+                subprocess.run(['kill', '-9', pid])
+                time.sleep(1)  # Give it a moment to die
+                return True
+            except Exception as e:
+                logging.error(f"Error killing process {pid}: {e}")
+                return False
+        else:
+            logging.error(f"Could not find process using port {port}")
+            return False
 
 app = Flask(__name__)
 # Secret key is needed for flashing messages
