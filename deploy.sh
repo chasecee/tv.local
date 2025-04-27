@@ -160,7 +160,7 @@ deploy() {
         
         # Install Python dependencies
         echo "Installing Python dependencies..."
-        pip3 install -r requirements.txt
+        pip3 install --break-system-packages -r requirements.txt
         
         # Copy lib files to web directory
         echo "Copying lib files to web directory..."
@@ -206,7 +206,7 @@ deploy() {
         
         # Install Python dependencies
         echo "Installing Python dependencies..."
-        pip3 install -r requirements.txt
+        pip3 install --break-system-packages -r requirements.txt
         
         # Copy lib files to web directory
         echo "Copying lib files to web directory..."

@@ -3,4 +3,3 @@ Pillow
 # st7789 # Removed, using Waveshare lib instead
 spidev # Keep, needed for SPI communication
 numpy  # Keep, Pillow or Waveshare lib might need it
-# RPi.GPIO # Removed, Waveshare lib handles GPIO 
