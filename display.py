@@ -121,9 +121,9 @@ class DisplayPlayer:
                 # Optional: Clear display
                 logging.info("Clearing display...")
                 self.disp.clear()
-                # Set backlight (example uses 50%, range 0-100)
-                logging.info("Setting backlight to 50%")
-                self.disp.bl_DutyCycle(50)
+                # Set backlight (example uses 80%, range 0-100)
+                logging.info("Setting backlight to 80%")
+                self.disp.bl_DutyCycle(80)
                 self.lcd_available = True
             except Exception as e:
                 logging.error(f"Error initializing Waveshare LCD: {e}")
