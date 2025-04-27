@@ -179,12 +179,11 @@ fi
 
 echo "Build successful! Binary size: $(du -h dist/tvlocal | cut -f1)"
 
-# Install systemd service if it doesn't exist
-if [ ! -f /etc/systemd/system/tv.local.service ]; then
-    echo "Installing systemd service..."
-    sudo cp tv.local.service /etc/systemd/system/tv.local.service
-    sudo systemctl daemon-reload
-fi
+# Install systemd service (force replace)
+echo "Installing/updating systemd service..."
+sudo cp tv.local.service /etc/systemd/system/tv.local.service
+sudo systemctl daemon-reload
+sudo systemctl restart tv.local
 
 echo "Stopping service..."
 sudo systemctl stop tv.local || true
