@@ -69,36 +69,9 @@ rm -rf dist/ build/ tvlocal.spec
 
 echo "Building fresh binary..."
 if command -v pyinstaller &> /dev/null; then
-    # Use : as separator on Unix systems
-    if [[ "$OSTYPE" == "darwin"* ]] || [[ -f /etc/debian_version ]]; then
-        pyinstaller --onefile --name tvlocal \
-            --add-data "static:static" \
-            --add-data "templates:templates" \
-            --add-data "lib:lib" \
-            app.py
-    else
-        # Use ; as separator on Windows
-        pyinstaller --onefile --name tvlocal \
-            --add-data "static;static" \
-            --add-data "templates;templates" \
-            --add-data "lib;lib" \
-            app.py
-    fi
+    pyinstaller --onefile --name tvlocal app.py
 else
-    # Same logic for local PyInstaller
-    if [[ "$OSTYPE" == "darwin"* ]] || [[ -f /etc/debian_version ]]; then
-        ~/.local/bin/pyinstaller --onefile --name tvlocal \
-            --add-data "static:static" \
-            --add-data "templates:templates" \
-            --add-data "lib:lib" \
-            app.py
-    else
-        ~/.local/bin/pyinstaller --onefile --name tvlocal \
-            --add-data "static;static" \
-            --add-data "templates;templates" \
-            --add-data "lib;lib" \
-            app.py
-    fi
+    ~/.local/bin/pyinstaller --onefile --name tvlocal app.py
 fi
 
 # Install systemd service if it doesn't exist
@@ -113,7 +86,7 @@ sudo systemctl stop tv.local || true
 
 echo "Setting up application..."
 # Create necessary directories if they don't exist
-sudo mkdir -p /home/pi/tv.local/{uploads,frames,static,templates,lib}
+sudo mkdir -p /home/pi/tv.local/{uploads,frames,static}
 sudo chown -R pi:pi /home/pi/tv.local/
 
 # Copy the binary and set permissions
@@ -121,23 +94,19 @@ echo "Installing new binary..."
 sudo cp dist/tvlocal /home/pi/tv.local/
 sudo chmod +x /home/pi/tv.local/tvlocal
 
-# Function to safely copy directories
-safe_copy_dir() {
-    local src="$1"
-    local dest="$2"
-    if [ -d "$src" ]; then
-        echo "Updating $dest directory..."
-        # Remove old files first
-        sudo rm -rf "$dest"/*
-        # Copy new files
-        sudo cp -r "$src"/* "$dest"/ 2>/dev/null || true
-    fi
-}
-
-# Copy static assets and templates
-safe_copy_dir "static" "/home/pi/tv.local/static"
-safe_copy_dir "templates" "/home/pi/tv.local/templates"
-safe_copy_dir "lib" "/home/pi/tv.local/lib"
+# Copy static assets and templates if they exist
+if [ -d "static" ]; then
+    echo "Copying static assets..."
+    sudo cp -r static/* /home/pi/tv.local/static/
+fi
+if [ -d "templates" ]; then
+    echo "Copying templates..."
+    sudo cp -r templates /home/pi/tv.local/
+fi
+if [ -d "lib" ]; then
+    echo "Copying LCD library..."
+    sudo cp -r lib /home/pi/tv.local/
+fi
 
 echo "Starting service..."
 sudo systemctl enable tv.local || true
@@ -163,5 +132,9 @@ if ! command -v ffmpeg &> /dev/null; then
     fi
 fi
 
-# Done! No need to start manually since systemd is handling it
-echo "Deployment complete! Access the web UI at http://tv.local or http://<IP_ADDRESS>" 
+# Set permissions
+chmod +x tv-local
+
+# Start the application
+echo "Starting TV Local application..."
+./tv-local 

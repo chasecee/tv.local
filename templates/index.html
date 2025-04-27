@@ -11,21 +11,19 @@
   </head>
   <body>
     <div class="container">
-      <h1>╔══ MINI TV PLAYER ══╗</h1>
+      <h1>Mini TV Player</h1>
 
       {% with messages = get_flashed_messages(with_categories=true) %} {% if
       messages %}
       <ul class="flash-messages">
         {% for category, message in messages %}
-        <li class="flash-{{ category }}">
-          [ {{ category | upper }} ] {{ message }}
-        </li>
+        <li class="flash-{{ category }}">{{ message }}</li>
         {% endfor %}
       </ul>
       {% endif %} {% endwith %}
 
       <section>
-        <h2>┌── Upload New Video ──┐</h2>
+        <h2>Upload New Video</h2>
         <form
           class="upload-form"
           method="post"
@@ -34,21 +32,21 @@
         >
           <div class="file-input-wrapper">
             <input type="file" name="file" accept=".mp4" required />
-            <button type="submit" class="default-button">[ UPLOAD ]</button>
+            <button type="submit" class="default-button">Upload</button>
           </div>
-          <small>> MP4 format only</small>
+          <small>MP4 format only</small>
         </form>
       </section>
 
       <section>
-        <h2>┌── Video Management ──┐</h2>
+        <h2>Video Management</h2>
         <div class="status-info">
           <p>
-            > Currently Playing:
+            Currently Playing:
             <strong>{{ current_video if current_video else 'None' }}</strong>
           </p>
           <p>
-            > Default Boot Video:
+            Default Boot Video:
             <strong
               >{{ default_video if default_video else 'None selected' }}</strong
             >
@@ -71,14 +69,14 @@
                   method="POST"
                   action="{{ url_for('switch_video', filename=video) }}"
                 >
-                  <button class="play-button" type="submit">[ PLAY ]</button>
+                  <button class="play-button" type="submit">Play</button>
                 </form>
                 <form
                   method="POST"
                   action="{{ url_for('delete_video', filename=video) }}"
                   onsubmit="return confirm('Delete {{ video }}?');"
                 >
-                  <button class="delete-button" type="submit">[ DEL ]</button>
+                  <button class="delete-button" type="submit">Delete</button>
                 </form>
               </div>
             </div>
@@ -89,16 +87,16 @@
             type="button"
             onclick="setDefaultVideo()"
           >
-            [ SET DEFAULT ]
+            Set Selected as Default
           </button>
         </form>
         {% else %}
         <div class="empty-state">
-          <p>> No videos uploaded yet_</p>
+          <p>No videos uploaded yet.</p>
         </div>
         {% endif %} {% if disk_usage %}
         <div class="disk-usage">
-          <p>> Storage: {{ disk_usage.percent_free }}% free</p>
+          <p>Storage: {{ disk_usage.percent_free }}% free</p>
           <small
             >{{ "%.1f"|format(disk_usage.free / (1024*1024*1024)) }} GB
             available of {{ "%.1f"|format(disk_usage.total / (1024*1024*1024))
