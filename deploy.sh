@@ -172,6 +172,15 @@ deploy() {
         mkdir -p headless/lib
         cp lib/*.py headless/lib/
         
+        # Set up PyInstaller optimizations
+        echo "Setting up PyInstaller optimizations..."
+        export PYINSTALLER_CACHE_DIR=~/.cache/pyinstaller
+        export PYTHONDONTWRITEBYTECODE=0  # Enable bytecode caching
+        export PYINSTALLER_PARALLEL=4      # Use 4 parallel processes
+        
+        # Create cache directory if it doesn't exist
+        mkdir -p "$PYINSTALLER_CACHE_DIR"
+        
         pyinstaller --onefile \
             --noconfirm \
             --add-data "web/lib:LIB" \
