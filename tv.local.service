@@ -1,13 +1,14 @@
 [Unit]
 Description=TV Local Service
 After=network.target
+Wants=network-online.target
 
 [Service]
 # Set the working directory to the project root
 WorkingDirectory=/home/pi/tv.local
 
 # Run the compiled binary instead of Python script
-ExecStart=/home/pi/tv.local/tvlocal
+ExecStart=/home/pi/tv.local/dist/tvlocal/tvlocal
 
 # Run as pi user (important for file permissions)
 User=pi
@@ -16,10 +17,20 @@ Group=pi
 # Restart the service if it fails
 Restart=on-failure
 RestartSec=5s
+StartLimitInterval=60s
+StartLimitBurst=3
 
 # Standard output and error logging
 StandardOutput=journal
 StandardError=journal
+
+# Environment variables
+Environment=PYTHONUNBUFFERED=1
+
+# Pre-start script to ensure directories exist and have correct permissions
+ExecStartPre=/bin/mkdir -p /home/pi/tv.local/{uploads,frames,static,video}
+ExecStartPre=/bin/chown -R pi:pi /home/pi/tv.local/
+ExecStartPre=/bin/chmod -R 755 /home/pi/tv.local/
 
 [Install]
 WantedBy=multi-user.target 

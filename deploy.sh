@@ -72,19 +72,6 @@ echo "Cleaning old build..."
 rm -rf dist/ build/ tvlocal.spec
 
 echo "Building fresh binary..."
-# Check available memory and create swap if needed
-MEM_AVAILABLE=$(free -m | awk '/^Mem:/{print $7}')
-if [ "$MEM_AVAILABLE" -lt 2048 ]; then  # Increased threshold to 2GB
-    echo "Low memory detected ($MEM_AVAILABLE MB). Creating swap file..."
-    sudo fallocate -l 4G /swapfile  # Increased swap to 4GB
-    sudo chmod 600 /swapfile
-    sudo mkswap /swapfile
-    sudo swapon /swapfile
-    SWAP_CREATED=true
-else
-    SWAP_CREATED=false
-fi
-
 # Generate spec file if it doesn't exist
 if [ ! -f "tvlocal.spec" ]; then
     echo "Generating PyInstaller spec file..."
@@ -92,7 +79,7 @@ if [ ! -f "tvlocal.spec" ]; then
     export PYTHONOPTIMIZE=2  # Enable Python optimizations
     export PYTHONDONTWRITEBYTECODE=1  # Don't create .pyc files
     
-    pyinstaller --name tvlocal --onefile \
+    pyinstaller --name tvlocal --onedir \
         --add-data "static:static" \
         --add-data "templates:templates" \
         --add-data "lib:lib" \
@@ -141,13 +128,6 @@ else
     pyinstaller --noconfirm --clean tvlocal.spec
 fi
 
-# Clean up swap if we created it
-if [ "$SWAP_CREATED" = true ]; then
-    echo "Removing temporary swap file..."
-    sudo swapoff /swapfile
-    sudo rm /swapfile
-fi
-
 # Verify the build was successful
 if [ ! -f "dist/tvlocal" ]; then
     echo "ERROR: PyInstaller build failed!"
@@ -159,7 +139,7 @@ echo "Build successful! Binary size: $(du -h dist/tvlocal | cut -f1)"
 # Install systemd service if it doesn't exist
 if [ ! -f /etc/systemd/system/tv.local.service ]; then
     echo "Installing systemd service..."
-    sudo cp tvplayer.service /etc/systemd/system/tv.local.service
+    sudo cp tv.local.service /etc/systemd/system/tv.local.service
     sudo systemctl daemon-reload
 fi
 
@@ -204,6 +184,84 @@ echo "Deployment complete! 🎉"
 echo "Service status:"
 systemctl status tv.local --no-pager
 
+# Add automatic error recovery
+echo "Setting up automatic error recovery..."
+cat > /home/pi/tv.local/health_check.sh << 'EOL'
+#!/bin/bash
+while true; do
+    if ! systemctl is-active --quiet tv.local; then
+        echo "$(date) - Service not running, attempting restart..."
+        sudo systemctl restart tv.local
+    fi
+    sleep 60
+done
+EOL
+
+chmod +x /home/pi/tv.local/health_check.sh
+
+# Create a systemd service for health check
+cat > /etc/systemd/system/tv.health.service << 'EOL'
+[Unit]
+Description=TV Local Health Check Service
+After=network.target tv.local.service
+
+[Service]
+Type=simple
+ExecStart=/home/pi/tv.local/health_check.sh
+Restart=always
+User=pi
+Group=pi
+
+[Install]
+WantedBy=multi-user.target
+EOL
+
+# Enable and start health check service
+sudo systemctl daemon-reload
+sudo systemctl enable tv.health
+sudo systemctl start tv.health
+
+# Create a simple status page
+cat > /home/pi/tv.local/status.html << 'EOL'
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TV Local Status</title>
+    <meta http-equiv="refresh" content="30">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .running { background-color: #d4edda; color: #155724; }
+        .stopped { background-color: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>TV Local Status</h1>
+    <div class="status" id="serviceStatus">Checking status...</div>
+    <script>
+        fetch('/status')
+            .then(response => response.json())
+            .then(data => {
+                const statusDiv = document.getElementById('serviceStatus');
+                statusDiv.className = 'status ' + (data.running ? 'running' : 'stopped');
+                statusDiv.textContent = data.running ? 'Service is running' : 'Service is stopped';
+            });
+    </script>
+</body>
+</html>
+EOL
+
+echo "Appliance setup complete! The system will:"
+echo "1. Automatically restart if the service stops"
+echo "2. Monitor system health every minute"
+echo "3. Provide a simple web status page"
+echo "4. Auto-recover from common errors"
+
+# Final status check
+echo "Current status:"
+systemctl status tv.local --no-pager
+systemctl status tv.health --no-pager
+
 # Check for FFmpeg
 if ! command -v ffmpeg &> /dev/null; then
     echo "FFmpeg not found. Installing..."
@@ -219,8 +277,8 @@ if ! command -v ffmpeg &> /dev/null; then
 fi
 
 # Set permissions
-chmod +x tv-local
+chmod +x tvlocal
 
 # Start the application
 echo "Starting TV Local application..."
-./tv-local 
+./tvlocal 

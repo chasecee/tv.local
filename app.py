@@ -484,6 +484,15 @@ def delete_video(filename):
     return redirect(url_for('index'))
 # --- End Delete Route ---
 
+@app.route('/status')
+def status():
+    """Return the current status of the service."""
+    return {
+        'running': True,  # The service is running if we can reach this endpoint
+        'timestamp': time.time(),
+        'version': '1.0'
+    }
+
 if __name__ == '__main__':
     # Parse command line arguments
     args = parse_args()
