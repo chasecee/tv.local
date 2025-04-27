@@ -9,9 +9,17 @@ import time # For checking modification times (optional optimization)
 import socket # For port checking
 import sys # Added for sys.exit
 import glob # Added for glob
+import argparse # Added for command line args
 
 # Configure basic logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+def parse_args():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(description='TV Player Application')
+    parser.add_argument('--log-level', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+                      default='INFO', help='Set the logging level')
+    return parser.parse_args()
 
 def check_and_kill_port(port):
     """Check if a port is in use and kill the process if it is."""
@@ -477,6 +485,13 @@ def delete_video(filename):
 # --- End Delete Route ---
 
 if __name__ == '__main__':
+    # Parse command line arguments
+    args = parse_args()
+    
+    # Set logging level from command line
+    logging.getLogger().setLevel(getattr(logging, args.log_level))
+    logging.info(f"Logging level set to: {args.log_level}")
+
     # Check and kill any process using port 5000
     if not check_and_kill_port(5000):
         logging.error("Could not free port 5000. Exiting...")
