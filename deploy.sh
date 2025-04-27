@@ -68,13 +68,33 @@ echo "Cleaning old build..."
 rm -rf dist/ build/ tvlocal.spec
 
 echo "Building fresh binary..."
+# Check available memory and create swap if needed
+MEM_AVAILABLE=$(free -m | awk '/^Mem:/{print $7}')
+if [ "$MEM_AVAILABLE" -lt 1024 ]; then
+    echo "Low memory detected ($MEM_AVAILABLE MB). Creating swap file..."
+    sudo fallocate -l 2G /swapfile
+    sudo chmod 600 /swapfile
+    sudo mkswap /swapfile
+    sudo swapon /swapfile
+    SWAP_CREATED=true
+else
+    SWAP_CREATED=false
+fi
+
 # Generate spec file if it doesn't exist
 if [ ! -f "tvlocal.spec" ]; then
     echo "Generating PyInstaller spec file..."
-    pyinstaller --name tvlocal --onefile --add-data "static:static" --add-data "templates:templates" --add-data "lib:lib" --add-data "web:web" --add-data "images:images" --hidden-import flask --hidden-import PIL --hidden-import numpy --hidden-import display app.py
+    pyinstaller --name tvlocal --onefile --add-data "static:static" --add-data "templates:templates" --add-data "lib:lib" --add-data "web:web" --add-data "images:images" --hidden-import flask --hidden-import PIL --hidden-import numpy --hidden-import display --noconfirm app.py
 else
     echo "Using existing spec file..."
-    pyinstaller tvlocal.spec
+    pyinstaller --noconfirm tvlocal.spec
+fi
+
+# Clean up swap if we created it
+if [ "$SWAP_CREATED" = true ]; then
+    echo "Removing temporary swap file..."
+    sudo swapoff /swapfile
+    sudo rm /swapfile
 fi
 
 # Verify the build was successful
