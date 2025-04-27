@@ -142,8 +142,11 @@ class DisplayPlayer:
 
     def _get_frames(self):
         """Gets a sorted list of frame image paths."""
-        frame_pattern = os.path.join(self.frames_folder, 'frame_*.png')
-        frames = sorted(glob.glob(frame_pattern))
+        # Only look for JPG files
+        jpg_pattern = os.path.join(self.frames_folder, 'frame_*.jpg')
+        frames = sorted(glob.glob(jpg_pattern))
+        if not frames:
+            logging.warning(f"No JPG frames found in {self.frames_folder}")
         return frames
 
     def _display_image(self, image_path):

@@ -8,6 +8,7 @@ import logging # Added for better logging
 import time # For checking modification times (optional optimization)
 import socket # For port checking
 import sys # Added for sys.exit
+import glob # Added for glob
 
 # Configure basic logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -22,51 +23,23 @@ def check_and_kill_port(port):
         logging.info(f"Port {port} is available.")
         return True
     except socket.error:
-        logging.warning(f"Port {port} is in use. Attempting to find and kill the process...")
-        
-        # Try different methods to find the process
-        pid = None
+        logging.warning(f"Port {port} is in use. Attempting to kill Python processes...")
         try:
-            # Try netstat first
-            result = subprocess.run(['netstat', '-tulpn'], capture_output=True, text=True)
-            for line in result.stdout.split('\n'):
-                if f':{port}' in line and 'LISTEN' in line:
-                    parts = line.split()
-                    pid = parts[-1].split('/')[0]
-                    break
-        except Exception as e:
-            logging.warning(f"netstat failed: {e}")
+            # Kill any Python processes that might be using the port
+            subprocess.run(['pkill', '-9', '-f', 'python.*app.py'])
+            time.sleep(1)  # Give it a moment to die
+            # Try the socket again
             try:
-                # Try ss as fallback
-                result = subprocess.run(['ss', '-tulpn'], capture_output=True, text=True)
-                for line in result.stdout.split('\n'):
-                    if f':{port}' in line and 'LISTEN' in line:
-                        parts = line.split()
-                        pid = parts[-1].split('/')[0]
-                        break
-            except Exception as e:
-                logging.warning(f"ss failed: {e}")
-                # Last resort: try pkill
-                try:
-                    logging.info("Trying pkill as last resort...")
-                    subprocess.run(['pkill', '-9', '-f', f'python.*:{port}'])
-                    time.sleep(1)
-                    return True
-                except Exception as e:
-                    logging.error(f"pkill failed: {e}")
-                    return False
-
-        if pid:
-            try:
-                logging.info(f"Found process using port {port} (PID: {pid}). Killing it...")
-                subprocess.run(['kill', '-9', pid])
-                time.sleep(1)  # Give it a moment to die
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.bind(('0.0.0.0', port))
+                sock.close()
+                logging.info("Successfully freed port 5000")
                 return True
-            except Exception as e:
-                logging.error(f"Error killing process {pid}: {e}")
+            except socket.error:
+                logging.error("Still could not free port 5000")
                 return False
-        else:
-            logging.error(f"Could not find process using port {port}")
+        except Exception as e:
+            logging.error(f"Error while trying to kill processes: {e}")
             return False
 
 app = Flask(__name__)
@@ -283,7 +256,8 @@ def convert_to_frames(video_path, output_folder):
         'ffmpeg', '-i', video_path,
         '-vf', 'scale=320:240:force_original_aspect_ratio=1,crop=320:240',  # Scale and crop to 320x240
         '-r', str(app.config.get('FRAME_RATE', 12)),  # Use configurable frame rate, default to 12
-        os.path.join(output_folder, 'frame_%04d.jpg')
+        '-q:v', '2',  # Set JPEG quality (2-31, lower is better)
+        os.path.join(output_folder, 'frame_%04d.jpg')  # Use JPG consistently
     ]
 
     try:
@@ -316,6 +290,14 @@ def convert_to_frames(video_path, output_folder):
             # Write marker on successful conversion
             source_filename = os.path.basename(video_path)
             write_video_marker(source_filename)
+            
+            # Debug: List the frames that were created
+            frames = glob.glob(os.path.join(output_folder, 'frame_*.jpg'))
+            logging.info(f"Created {len(frames)} JPG frames in {output_folder}")
+            if frames:
+                logging.debug(f"First frame: {frames[0]}")
+                logging.debug(f"Last frame: {frames[-1]}")
+            
             return True
         else:
             error_output = process.stderr.read()
