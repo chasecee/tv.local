@@ -156,12 +156,24 @@ deploy() {
         # Copy LCD library to web directory for bundling
         echo "Copying LCD library for bundling..."
         cp -r lib web/
+        
+        # Set up PyInstaller optimizations
+        echo "Setting up PyInstaller optimizations..."
+        export PYINSTALLER_CACHE_DIR=~/.cache/pyinstaller
+        export PYTHONDONTWRITEBYTECODE=0
+        export PYINSTALLER_PARALLEL=4
+        
+        # Create cache directory if it doesn't exist
+        mkdir -p "$PYINSTALLER_CACHE_DIR"
+        
         echo "Running PyInstaller for web mode..."
         pyinstaller --onefile \
+            --noconfirm \
             --add-data "web/lib:LIB" \
             --hidden-import lib.LCD_2inch \
             --hidden-import lib.lcdconfig \
             --name tvlocal web/app.py
+            
         # Verify binary was built
         if [ ! -f "dist/tvlocal" ]; then
             echo "ERROR: PyInstaller failed to create binary at dist/tvlocal"
@@ -175,12 +187,24 @@ deploy() {
         # Copy LCD library to headless directory for bundling
         echo "Copying LCD library for bundling..."
         cp -r lib headless/
+        
+        # Set up PyInstaller optimizations
+        echo "Setting up PyInstaller optimizations..."
+        export PYINSTALLER_CACHE_DIR=~/.cache/pyinstaller
+        export PYTHONDONTWRITEBYTECODE=0
+        export PYINSTALLER_PARALLEL=4
+        
+        # Create cache directory if it doesn't exist
+        mkdir -p "$PYINSTALLER_CACHE_DIR"
+        
         echo "Running PyInstaller for headless mode..."
         pyinstaller --onefile \
+            --noconfirm \
             --add-data "headless/lib:LIB" \
             --hidden-import lib.LCD_2inch \
             --hidden-import lib.lcdconfig \
             --name tvheadless headless/main.py
+            
         # Verify binary was built
         if [ ! -f "dist/tvheadless" ]; then
             echo "ERROR: PyInstaller failed to create binary at dist/tvheadless"
