@@ -16,7 +16,7 @@ install_dependencies() {
     if check_internet; then
         echo "Internet available, updating system packages..."
         sudo apt update
-        sudo apt install -y python3-pip python3-dev python3-flask python3-pil python3-numpy ffmpeg pigpio python3-pigpio
+        sudo apt install -y python3-pip python3-dev python3-flask python3-pil python3-numpy ffmpeg pigpio python3-pigpio python3-gpiozero python3-rpi.gpio
         # Start and enable pigpio daemon
         sudo systemctl enable pigpiod
         sudo systemctl start pigpiod
@@ -28,7 +28,7 @@ install_dependencies() {
         if ! command -v python3 >/dev/null || ! command -v ffmpeg >/dev/null; then
             echo "ERROR: Critical packages (python3, ffmpeg) missing and no internet to install them."
             echo "Please connect to internet or install packages manually:"
-            echo "sudo apt install python3-pip python3-dev python3-flask python3-pil python3-numpy ffmpeg pigpio python3-pigpio"
+            echo "sudo apt install python3-pip python3-dev python3-flask python3-pil python3-numpy ffmpeg pigpio python3-pigpio python3-gpiozero python3-rpi.gpio"
             exit 1
         fi
         echo "Required packages found, proceeding with offline deployment..."
@@ -92,6 +92,8 @@ if [ ! -f "tvlocal.spec" ]; then
         --add-data "web:web" \
         --add-data "images:images" \
         --add-data "video:video" \
+        --add-data "/usr/lib/python3/dist-packages/gpiozero:gpiozero" \
+        --add-data "/usr/lib/python3/dist-packages/RPi:RP" \
         --hidden-import flask \
         --hidden-import PIL \
         --hidden-import numpy \
@@ -116,6 +118,20 @@ if [ ! -f "tvlocal.spec" ]; then
         --hidden-import Image \
         --hidden-import ImageDraw \
         --hidden-import ImageFont \
+        --hidden-import gpiozero.pins.local \
+        --hidden-import gpiozero.pins.mock \
+        --hidden-import gpiozero.pins.rpio \
+        --hidden-import gpiozero.pins.rpigpio \
+        --hidden-import gpiozero.pins.pigpio \
+        --hidden-import gpiozero.pins.lgpio \
+        --hidden-import gpiozero.pins.native \
+        --hidden-import gpiozero.pins.pi \
+        --hidden-import gpiozero.pins.rpi \
+        --hidden-import gpiozero.pins.rpio \
+        --hidden-import gpiozero.pins.rpigpio \
+        --hidden-import gpiozero.pins.pigpio \
+        --hidden-import gpiozero.pins.lgpio \
+        --hidden-import gpiozero.pins.native \
         --noconfirm \
         --clean \
         --strip \

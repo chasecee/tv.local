@@ -29,11 +29,14 @@ StandardError=journal
 
 # Environment variables
 Environment=PYTHONUNBUFFERED=1
+Environment=GPIOZERO_PIN_FACTORY=pigpio
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/games:/usr/games
 
 # Pre-start script to ensure directories exist and have correct permissions
 ExecStartPre=/bin/mkdir -p /home/pi/tv.local/{uploads,frames,static,video}
 ExecStartPre=/bin/chown -R pi:pi /home/pi/tv.local/
 ExecStartPre=/bin/chmod -R 755 /home/pi/tv.local/
+ExecStartPre=/bin/systemctl start pigpiod
 
 [Install]
 WantedBy=multi-user.target 
