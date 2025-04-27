@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 # Set the working directory to the project root
-WorkingDirectory=/home/pi/tv.local
+WorkingDirectory=/home/pi/tv.local/web
 
 # Run the compiled binary with port 8080
 ExecStart=/home/pi/tv.local/web/tvlocal --port 8080
@@ -22,4 +22,4 @@ StandardOutput=journal
 StandardError=journal
 
 [Install]
-WantedBy=multi-user.target 
+WantedBy=multi-user.target
