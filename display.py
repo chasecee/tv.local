@@ -8,7 +8,6 @@ import sys
 from PIL import Image, ImageDraw, ImageFont  # Direct import since it will be bundled
 import glob
 
-# Configure logging first
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Import Waveshare library
