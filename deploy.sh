@@ -91,6 +91,26 @@ if [ ! -f "tvlocal.spec" ]; then
         --hidden-import PIL \
         --hidden-import numpy \
         --hidden-import display \
+        --hidden-import gpiozero \
+        --hidden-import gpiozero.pins.lgpio \
+        --hidden-import gpiozero.pins.rpigpio \
+        --hidden-import gpiozero.pins.pigpio \
+        --hidden-import gpiozero.pins.native \
+        --hidden-import spidev \
+        --hidden-import RPi.GPIO \
+        --hidden-import lgpio \
+        --hidden-import pigpio \
+        --hidden-import numbers \
+        --hidden-import argparse \
+        --hidden-import atexit \
+        --hidden-import shutil \
+        --hidden-import subprocess \
+        --hidden-import socket \
+        --hidden-import glob \
+        --hidden-import threading \
+        --hidden-import Image \
+        --hidden-import ImageDraw \
+        --hidden-import ImageFont \
         --noconfirm \
         --clean \
         --strip \
