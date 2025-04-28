@@ -1,42 +1,18 @@
 [Unit]
 Description=TV Local Service
 After=network.target pigpiod.service
-Wants=network-online.target pigpiod.service
 Requires=pigpiod.service
 
 [Service]
-# Set the working directory to the project root
-WorkingDirectory=/home/pi/tv.local
-
-# Run the compiled binary instead of Python script
-ExecStart=/home/pi/tv.local/dist/tvlocal/tvlocal
-
-# Run as pi user (important for file permissions)
+Type=simple
 User=pi
 Group=pi
-
-# Add necessary groups for GPIO access
-SupplementaryGroups=gpio,i2c,spi
-
-# Restart the service if it fails
-Restart=on-failure
-RestartSec=5s
-StartLimitInterval=60s
-StartLimitBurst=3
-
-# Standard output and error logging
-StandardOutput=journal
-StandardError=journal
-
-# Environment variables
+WorkingDirectory=/home/pi/tv.local
+ExecStart=/home/pi/tv.local/dist/tvlocal/tvlocal
+Restart=always
+RestartSec=5
 Environment=PYTHONUNBUFFERED=1
 Environment=GPIOZERO_PIN_FACTORY=pigpio
-Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/games:/usr/games
-
-# Pre-start script to ensure directories exist and have correct permissions
-ExecStartPre=/bin/mkdir -p /home/pi/tv.local/{uploads,frames,static,video}
-ExecStartPre=/bin/chown -R pi:pi /home/pi/tv.local/
-ExecStartPre=/bin/chmod -R 755 /home/pi/tv.local/
 
 [Install]
 WantedBy=multi-user.target 

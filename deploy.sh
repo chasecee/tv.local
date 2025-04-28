@@ -26,6 +26,18 @@ install_dependencies() {
         if ! systemctl is-active --quiet pigpiod; then
             echo "Starting pigpiod service..."
             sudo systemctl start pigpiod
+            sleep 2  # Give it a moment to start
+        fi
+        # Verify pigpiod is actually running
+        if ! pgrep pigpiod > /dev/null; then
+            echo "WARNING: pigpiod process not found, attempting manual start..."
+            sudo pigpiod
+            sleep 2
+        fi
+        # Final verification
+        if ! pgrep pigpiod > /dev/null; then
+            echo "ERROR: Failed to start pigpiod. This is required for the LCD display."
+            exit 1
         fi
     else
         echo "No internet connection. Checking if required packages are installed..."
