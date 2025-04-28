@@ -21,11 +21,15 @@ setup_venv() {
         sudo apt install -y python3-venv
     fi
     
-    # Create virtual environment if it doesn't exist
-    if [ ! -d "venv" ]; then
-        echo "Creating virtual environment..."
-        python3 -m venv venv --system-site-packages
+    # Remove existing venv if it exists
+    if [ -d "venv" ]; then
+        echo "Removing existing virtual environment..."
+        rm -rf venv
     fi
+    
+    # Create new virtual environment with system packages
+    echo "Creating virtual environment with system packages..."
+    python3 -m venv venv --system-site-packages
     
     # Activate virtual environment
     source venv/bin/activate
@@ -45,11 +49,23 @@ setup_venv() {
     echo "Installing additional Python packages..."
     pip install flask pillow gpiozero pigpio
     
-    # Verify numpy is available
-    if ! python3 -c "import numpy" &> /dev/null; then
-        echo "ERROR: numpy installation failed"
-        exit 1
-    fi
+    # Verify all required packages
+    echo "Verifying all required packages..."
+    python3 -c "
+import sys
+packages = ['numpy', 'PIL', 'RPi.GPIO', 'flask', 'gpiozero', 'pigpio']
+missing = []
+for pkg in packages:
+    try:
+        __import__(pkg)
+        print(f'✓ {pkg} is installed')
+    except ImportError as e:
+        missing.append(pkg)
+        print(f'✗ {pkg} is missing: {str(e)}')
+if missing:
+    print('\nERROR: Some required packages are missing')
+    sys.exit(1)
+"
 }
 
 # Function to install dependencies with offline fallback
