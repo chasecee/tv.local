@@ -11,12 +11,53 @@ check_internet() {
     fi
 }
 
+# Function to setup virtual environment
+setup_venv() {
+    echo "Setting up Python virtual environment..."
+    
+    # Install python3-venv if not already installed
+    if ! command -v python3 -m venv &> /dev/null; then
+        echo "Installing python3-venv..."
+        sudo apt install -y python3-venv
+    fi
+    
+    # Create virtual environment if it doesn't exist
+    if [ ! -d "venv" ]; then
+        echo "Creating virtual environment..."
+        python3 -m venv venv
+    fi
+    
+    # Activate virtual environment
+    source venv/bin/activate
+    
+    # Upgrade pip
+    pip install --upgrade pip
+    
+    # Install system numpy first
+    echo "Installing system numpy..."
+    sudo apt install -y python3-numpy
+    
+    # Install required packages
+    echo "Installing Python packages..."
+    pip install flask pillow gpiozero pigpio RPi.GPIO
+    
+    # Verify numpy is available
+    if ! python3 -c "import numpy" &> /dev/null; then
+        echo "ERROR: numpy installation failed"
+        exit 1
+    fi
+}
+
 # Function to install dependencies with offline fallback
 install_dependencies() {
     if check_internet; then
         echo "Internet available, updating system packages..."
         sudo apt update
-        sudo apt install -y python3-pip python3-dev python3-flask python3-pil python3-numpy ffmpeg pigpio python3-pigpio python3-gpiozero python3-rpi.gpio
+        sudo apt install -y python3-pip python3-dev ffmpeg pigpio
+        
+        # Setup virtual environment and install Python packages
+        setup_venv
+        
         # Start and enable pigpio daemon
         sudo systemctl enable pigpiod
         sudo systemctl start pigpiod
@@ -45,7 +86,7 @@ install_dependencies() {
         if ! command -v python3 >/dev/null || ! command -v ffmpeg >/dev/null; then
             echo "ERROR: Critical packages (python3, ffmpeg) missing and no internet to install them."
             echo "Please connect to internet or install packages manually:"
-            echo "sudo apt install python3-pip python3-dev python3-flask python3-pil python3-numpy ffmpeg pigpio python3-pigpio python3-gpiozero python3-rpi.gpio"
+            echo "sudo apt install python3-pip python3-dev python3-venv ffmpeg pigpio"
             exit 1
         fi
         echo "Required packages found, proceeding with offline deployment..."
@@ -57,15 +98,13 @@ install_pyinstaller() {
     if ! command -v pyinstaller &> /dev/null; then
         if check_internet; then
             echo "Installing PyInstaller..."
-            # Try user installation first
-            pip3 install --user pyinstaller || {
-                echo "User installation failed, trying system-wide..."
-                sudo pip3 install pyinstaller
-            }
+            # Ensure we're in the virtual environment
+            source venv/bin/activate
+            pip install pyinstaller
         else
             echo "ERROR: PyInstaller not found and no internet to install it."
             echo "Please connect to internet or install PyInstaller manually:"
-            echo "sudo pip3 install --break-system-packages pyinstaller"
+            echo "pip install pyinstaller"
             exit 1
         fi
     else
@@ -97,6 +136,9 @@ echo "Building fresh binary..."
 # Generate spec file if it doesn't exist
 if [ ! -f "tvlocal.spec" ]; then
     echo "Generating PyInstaller spec file..."
+    # Activate virtual environment for build
+    source venv/bin/activate
+    
     # Optimize for Pi Zero 2W
     export PYTHONOPTIMIZE=2  # Enable Python optimizations
     export PYTHONDONTWRITEBYTECODE=1  # Don't create .pyc files
@@ -109,8 +151,6 @@ if [ ! -f "tvlocal.spec" ]; then
         --add-data "web:web" \
         --add-data "images:images" \
         --add-data "video:video" \
-        --add-data "/usr/lib/python3/dist-packages/gpiozero:gpiozero" \
-        --add-data "/usr/lib/python3/dist-packages/RPi:RP" \
         --hidden-import flask \
         --hidden-import PIL \
         --hidden-import numpy \
@@ -185,6 +225,8 @@ if [ ! -f "tvlocal.spec" ]; then
         app.py
 else
     echo "Using existing spec file..."
+    # Activate virtual environment for build
+    source venv/bin/activate
     pyinstaller --noconfirm --clean tvlocal.spec
 fi
 
