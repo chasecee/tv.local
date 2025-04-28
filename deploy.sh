@@ -22,6 +22,11 @@ install_dependencies() {
         sudo systemctl start pigpiod
         # Add user to necessary groups
         sudo usermod -a -G gpio,i2c,spi pi
+        # Ensure pigpiod is running
+        if ! systemctl is-active --quiet pigpiod; then
+            echo "Starting pigpiod service..."
+            sudo systemctl start pigpiod
+        fi
     else
         echo "No internet connection. Checking if required packages are installed..."
         # Check for critical packages

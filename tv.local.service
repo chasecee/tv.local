@@ -1,7 +1,8 @@
 [Unit]
 Description=TV Local Service
-After=network.target
-Wants=network-online.target
+After=network.target pigpiod.service
+Wants=network-online.target pigpiod.service
+Requires=pigpiod.service
 
 [Service]
 # Set the working directory to the project root
@@ -36,7 +37,6 @@ Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/u
 ExecStartPre=/bin/mkdir -p /home/pi/tv.local/{uploads,frames,static,video}
 ExecStartPre=/bin/chown -R pi:pi /home/pi/tv.local/
 ExecStartPre=/bin/chmod -R 755 /home/pi/tv.local/
-ExecStartPre=/bin/systemctl start pigpiod
 
 [Install]
 WantedBy=multi-user.target 
