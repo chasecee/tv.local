@@ -73,38 +73,43 @@ install_dependencies() {
     if check_internet; then
         echo "Internet available, updating system packages..."
         sudo apt update
-        sudo apt install -y python3-pip python3-dev ffmpeg pigpio
+        
+        # Install required system packages
+        echo "Installing system dependencies..."
+        sudo apt install -y python3-pip python3-dev python3-venv ffmpeg pigpio
         
         # Setup virtual environment and install Python packages
         setup_venv
         
         # Start and enable pigpio daemon
+        echo "Setting up pigpio daemon..."
         sudo systemctl enable pigpiod
         sudo systemctl start pigpiod
-        # Add user to necessary groups
-        sudo usermod -a -G gpio,i2c,spi pi
-        # Ensure pigpiod is running
+        
+        # Verify pigpiod is running using systemctl
         if ! systemctl is-active --quiet pigpiod; then
-            echo "Starting pigpiod service..."
-            sudo systemctl start pigpiod
-            sleep 2  # Give it a moment to start
-        fi
-        # Verify pigpiod is actually running
-        if ! pgrep pigpiod > /dev/null; then
-            echo "WARNING: pigpiod process not found, attempting manual start..."
+            echo "WARNING: pigpiod service not active, attempting manual start..."
             sudo pigpiod
             sleep 2
         fi
+        
         # Final verification
-        if ! pgrep pigpiod > /dev/null; then
+        if ! systemctl is-active --quiet pigpiod; then
             echo "ERROR: Failed to start pigpiod. This is required for the LCD display."
+            echo "Please check the following:"
+            echo "1. Is pigpio package installed? (sudo apt install pigpio)"
+            echo "2. Try manually starting pigpiod: sudo pigpiod"
+            echo "3. Check service status: sudo systemctl status pigpiod"
             exit 1
         fi
+        
+        # Add user to necessary groups
+        sudo usermod -a -G gpio,i2c,spi pi
     else
         echo "No internet connection. Checking if required packages are installed..."
         # Check for critical packages
         if ! command -v python3 >/dev/null || ! command -v ffmpeg >/dev/null; then
-            echo "ERROR: Critical packages (python3, ffmpeg) missing and no internet to install them."
+            echo "ERROR: Critical packages missing and no internet to install them."
             echo "Please connect to internet or install packages manually:"
             echo "sudo apt install python3-pip python3-dev python3-venv ffmpeg pigpio"
             exit 1
