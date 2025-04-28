@@ -24,7 +24,7 @@ setup_venv() {
     # Create virtual environment if it doesn't exist
     if [ ! -d "venv" ]; then
         echo "Creating virtual environment..."
-        python3 -m venv venv
+        python3 -m venv venv --system-site-packages
     fi
     
     # Activate virtual environment
@@ -33,13 +33,17 @@ setup_venv() {
     # Upgrade pip
     pip install --upgrade pip
     
-    # Install system numpy first
-    echo "Installing system numpy..."
-    sudo apt install -y python3-numpy
+    # Install system packages as per Waveshare documentation
+    echo "Installing system packages..."
+    sudo apt install -y python3-pip python3-pil python3-numpy
     
-    # Install required packages
-    echo "Installing Python packages..."
-    pip install flask pillow gpiozero pigpio RPi.GPIO
+    # Install RPi.GPIO as per Waveshare documentation
+    echo "Installing RPi.GPIO..."
+    pip install RPi.GPIO
+    
+    # Install additional required packages
+    echo "Installing additional Python packages..."
+    pip install flask pillow gpiozero pigpio
     
     # Verify numpy is available
     if ! python3 -c "import numpy" &> /dev/null; then
